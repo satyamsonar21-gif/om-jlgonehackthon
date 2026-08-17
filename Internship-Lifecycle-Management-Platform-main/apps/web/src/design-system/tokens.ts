@@ -22,6 +22,8 @@ export interface RoleTheme {
   ring: string;
   badgeBg: string;
   badgeText: string;
+  fontDisplay: string;
+  fontBody: string;
   isDark: boolean;
 }
 
@@ -48,6 +50,8 @@ export const themes: Record<RoleKey, RoleTheme> = {
     ring: 'rgba(166, 124, 82, 0.3)',
     badgeBg: '#E6D5C1',
     badgeText: '#6B4E3D',
+    fontDisplay: "'Poppins', sans-serif",
+    fontBody: "'Lato', 'Inter', sans-serif",
     isDark: false,
   },
   faculty: {
@@ -72,6 +76,8 @@ export const themes: Record<RoleKey, RoleTheme> = {
     ring: 'rgba(3, 134, 102, 0.25)',
     badgeBg: '#E0F0E6',
     badgeText: '#1B4322',
+    fontDisplay: "'Lora', Georgia, serif",
+    fontBody: "'Open Sans', 'Inter', sans-serif",
     isDark: false,
   },
   company: {
@@ -96,6 +102,8 @@ export const themes: Record<RoleKey, RoleTheme> = {
     ring: 'rgba(84, 0, 222, 0.25)',
     badgeBg: '#F5E6FB',
     badgeText: '#5400DE',
+    fontDisplay: "'DM Serif Display', Georgia, serif",
+    fontBody: "'Inter', sans-serif",
     isDark: false,
   },
   admin: {
@@ -120,6 +128,8 @@ export const themes: Record<RoleKey, RoleTheme> = {
     ring: 'rgba(141, 180, 214, 0.4)',
     badgeBg: '#D6E6F2',          // Soft ice blue badge
     badgeText: '#0F2942',        // Deep steel navy text
+    fontDisplay: "'Titillium Web', 'Plus Jakarta Sans', sans-serif",
+    fontBody: "'Lato', 'Inter', sans-serif",
     isDark: false,
   },
 };
@@ -175,6 +185,8 @@ export function applyTheme(role: RoleKey) {
   root.style.setProperty('--text', theme.text);
   root.style.setProperty('--text-muted', theme.textMuted);
   root.style.setProperty('--ring-color', theme.ring);
+  root.style.setProperty('--font-display', theme.fontDisplay);
+  root.style.setProperty('--font-body', theme.fontBody);
   
   root.setAttribute('data-role', role);
 }

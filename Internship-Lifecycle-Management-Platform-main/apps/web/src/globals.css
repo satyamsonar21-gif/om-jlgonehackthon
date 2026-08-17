@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lato:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&family=Titillium+Web:wght@600;700;900&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -18,6 +18,8 @@
   --cta-hover: #8C6540;
   --cta-text: #FFFFFF;
   --ring-color: rgba(166, 124, 82, 0.3);
+  --font-display: 'Poppins', sans-serif;
+  --font-body: 'Lato', 'Inter', sans-serif;
 }
 
 :root[data-role="student"] {
@@ -36,6 +38,8 @@
   --cta-hover: #8C6540;
   --cta-text: #FFFFFF;
   --ring-color: rgba(166, 124, 82, 0.3);
+  --font-display: 'Poppins', sans-serif;
+  --font-body: 'Lato', 'Inter', sans-serif;
 }
 
 :root[data-role="faculty"] {
@@ -54,6 +58,8 @@
   --cta-hover: #F59E0B;
   --cta-text: #081C15;
   --ring-color: rgba(3, 134, 102, 0.25);
+  --font-display: 'Lora', Georgia, serif;
+  --font-body: 'Open Sans', 'Inter', sans-serif;
 }
 
 :root[data-role="company"],
@@ -73,6 +79,8 @@
   --cta-hover: #4200B3;
   --cta-text: #FFFFFF;
   --ring-color: rgba(84, 0, 222, 0.25);
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Inter', sans-serif;
 }
 
 :root[data-role="admin"] {
@@ -91,11 +99,13 @@
   --cta-hover: #729FC4;
   --cta-text: #0F2942;
   --ring-color: rgba(141, 180, 214, 0.4);
+  --font-display: 'Titillium Web', 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Lato', 'Inter', sans-serif;
 }
 
 /* 1. Global Typography & Font Rules */
 html {
-  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body, 'Inter', sans-serif);
   scroll-behavior: smooth;
   background-color: var(--bg);
 }
@@ -103,11 +113,39 @@ html {
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body, 'Inter', sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   line-height: 1.55;
+}
+
+/* Headings automatically use the role-specific display typeface */
+h1, h2, h3, .font-display {
+  font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+}
+
+/* Explicit font family utility classes */
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+.font-lora {
+  font-family: 'Lora', Georgia, serif;
+}
+.font-dm-serif {
+  font-family: 'DM Serif Display', Georgia, serif;
+}
+.font-titillium {
+  font-family: 'Titillium Web', sans-serif;
+}
+.font-lato {
+  font-family: 'Lato', sans-serif;
+}
+.font-opensans {
+  font-family: 'Open Sans', sans-serif;
+}
+.font-inter {
+  font-family: 'Inter', sans-serif;
 }
 
 /* Monospace font for telemetry, codes, badges */
