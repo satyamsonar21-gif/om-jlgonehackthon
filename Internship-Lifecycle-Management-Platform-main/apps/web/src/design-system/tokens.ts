@@ -103,23 +103,23 @@ export const themes: Record<RoleKey, RoleTheme> = {
     label: 'Administrator',
     iconName: 'Shield',
     tagline: 'Institutional governance, access control & audit logs',
-    primary: '#3C096C',          // Deep royal purple
-    primaryHover: '#240046',
-    secondary: '#7C3AED',        // Vibrant purple accent
-    accentSoft: '#F3E8FF',       // Soft airy lavender
-    highlights: '#7C3AED',       // Purple highlight
-    cta: '#FBB02D',              // CTA Buttons (Amber Gold)
-    ctaHover: '#F59E0B',
-    ctaText: '#03071E',          // Deep obsidian contrast text
-    bg: '#FAF5FF',               // Light airy lavender canvas
+    primary: '#1E3A5F',          // Deep steel navy main brand
+    primaryHover: '#132742',
+    secondary: '#8DB4D6',        // Steel sky blue
+    accentSoft: '#D6E6F2',       // Soft ice blue
+    highlights: '#8DB4D6',       // Sky blue highlight
+    cta: '#8DB4D6',              // CTA Buttons (Steel Sky Blue)
+    ctaHover: '#729FC4',
+    ctaText: '#0F2942',          // Deep steel navy contrast text
+    bg: '#F2F7FB',               // Crisp ice-blue white canvas
     surface: '#FFFFFF',          // Crisp pure white cards
-    surfaceMuted: '#F3E8FF',     // Soft light lilac section background
-    border: '#E9D5FF',           // Soft lilac border
-    text: '#03071E',             // Deep obsidian dark text
-    textMuted: '#6B21A8',        // Rich purple muted text
-    ring: 'rgba(124, 58, 237, 0.25)',
-    badgeBg: '#ECCAFF',          // Soft pastel lavender badge
-    badgeText: '#03071E',        // Deep obsidian text
+    surfaceMuted: '#D6E6F2',     // Soft ice blue section background
+    border: '#D6E6F2',           // Soft ice blue border
+    text: '#0F2942',             // Deep steel navy text
+    textMuted: '#486581',        // Slate steel muted text
+    ring: 'rgba(141, 180, 214, 0.4)',
+    badgeBg: '#D6E6F2',          // Soft ice blue badge
+    badgeText: '#0F2942',        // Deep steel navy text
     isDark: false,
   },
 };

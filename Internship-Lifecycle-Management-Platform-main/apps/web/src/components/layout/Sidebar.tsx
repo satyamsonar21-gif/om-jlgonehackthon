@@ -220,7 +220,7 @@ export function Sidebar({ role }: SidebarProps) {
     );
   }
 
-  // ADMIN SIDEBAR (#FAF5FF / #E9D5FF / #3C096C / #FBB02D / #03071E - Lighter Airy Lavender)
+  // ADMIN SIDEBAR (#F2F7FB / #D6E6F2 / #8DB4D6 / #FFFFFF / #0F2942)
   const navItems = [
     { href: '/admin', label: 'Command Overview', icon: LayoutDashboard },
     { href: '/admin/students', label: 'Students Directory', icon: GraduationCap },
@@ -233,14 +233,14 @@ export function Sidebar({ role }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 flex-shrink-0 flex flex-col bg-[#FAF5FF] border-r border-[#E9D5FF] text-[#03071E]">
-      <div className="h-16 flex items-center px-6 border-b border-[#E9D5FF] bg-[#F3E8FF]/60">
-        <div className="w-8 h-8 rounded-lg bg-[#3C096C] text-[#FBB02D] flex items-center justify-center mr-3 shadow-xs">
+    <aside className="w-64 flex-shrink-0 flex flex-col bg-[#F2F7FB] border-r border-[#D6E6F2] text-[#0F2942]">
+      <div className="h-16 flex items-center px-6 border-b border-[#D6E6F2] bg-[#D6E6F2]/50">
+        <div className="w-8 h-8 rounded-lg bg-[#1E3A5F] text-[#8DB4D6] flex items-center justify-center mr-3 shadow-xs">
           <Shield size={18} />
         </div>
         <div>
-          <div className="font-bold tracking-tight text-[#03071E] leading-tight">ILMP</div>
-          <div className="text-[10px] font-mono font-bold text-[#7C3AED] uppercase tracking-wider">Admin Governance</div>
+          <div className="font-bold tracking-tight text-[#0F2942] leading-tight">ILMP</div>
+          <div className="text-[10px] font-mono font-bold text-[#1E3A5F] uppercase tracking-wider">Admin Governance</div>
         </div>
       </div>
 
@@ -253,22 +253,22 @@ export function Sidebar({ role }: SidebarProps) {
               to={item.href}
               className={`flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                 isActive 
-                  ? 'text-white font-bold bg-[#3C096C] shadow-xs' 
-                  : 'text-[#03071E] hover:bg-[#F3E8FF]'
+                  ? 'text-white font-bold bg-[#1E3A5F] shadow-xs' 
+                  : 'text-[#0F2942] hover:bg-[#D6E6F2]/60'
               }`}
             >
-              <item.icon className={`w-4 h-4 mr-2.5 ${isActive ? 'text-[#FBB02D]' : 'text-[#7C3AED]'}`} />
+              <item.icon className={`w-4 h-4 mr-2.5 ${isActive ? 'text-[#8DB4D6]' : 'text-[#486581]'}`} />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </div>
 
-      <div className="p-4 border-t border-[#E9D5FF] flex items-center gap-3 bg-[#F3E8FF]/40">
+      <div className="p-4 border-t border-[#D6E6F2] flex items-center gap-3 bg-[#D6E6F2]/40">
         <SafeUserButton role={role} />
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold text-[#03071E] truncate">Super Administrator</div>
-          <div className="text-[10px] font-mono text-[#7C3AED]">Master Key Node</div>
+          <div className="text-xs font-semibold text-[#0F2942] truncate">Super Administrator</div>
+          <div className="text-[10px] font-mono text-[#1E3A5F]">Master Key Node</div>
         </div>
       </div>
     </aside>

@@ -76,21 +76,21 @@
 }
 
 :root[data-role="admin"] {
-  --bg: #FAF5FF;
+  --bg: #F2F7FB;
   --surface: #FFFFFF;
-  --surface-muted: #F3E8FF;
-  --border: #E9D5FF;
-  --text: #03071E;
-  --text-muted: #6B21A8;
-  --primary: #3C096C;
-  --primary-hover: #240046;
-  --secondary: #7C3AED;
-  --highlights: #7C3AED;
-  --accent-soft: #F3E8FF;
-  --cta: #FBB02D;
-  --cta-hover: #F59E0B;
-  --cta-text: #03071E;
-  --ring-color: rgba(124, 58, 237, 0.25);
+  --surface-muted: #D6E6F2;
+  --border: #D6E6F2;
+  --text: #0F2942;
+  --text-muted: #486581;
+  --primary: #1E3A5F;
+  --primary-hover: #132742;
+  --secondary: #8DB4D6;
+  --highlights: #8DB4D6;
+  --accent-soft: #D6E6F2;
+  --cta: #8DB4D6;
+  --cta-hover: #729FC4;
+  --cta-text: #0F2942;
+  --ring-color: rgba(141, 180, 214, 0.4);
 }
 
 /* 1. Global Typography & Font Rules */

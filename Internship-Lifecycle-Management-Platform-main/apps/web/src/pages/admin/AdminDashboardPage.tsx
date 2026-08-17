@@ -72,9 +72,9 @@ export default function AdminDashboardPage() {
             <div 
               className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold mb-2 border"
               style={{
-                backgroundColor: 'var(--badge-bg, rgba(224, 170, 255, 0.2))',
+                backgroundColor: 'var(--surface-muted)',
                 borderColor: 'var(--border)',
-                color: 'var(--highlights)'
+                color: 'var(--primary)'
               }}
             >
               <Shield size={13} />
