@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+.turbo
+build
+*.log
+.env
+.env.local
+.env*.local
+*.db
+.prisma
