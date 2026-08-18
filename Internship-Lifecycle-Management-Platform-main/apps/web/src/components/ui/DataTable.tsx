@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown, SlidersHorizontal } from 'lucide-react';
 import { EmptyState } from './EmptyState';
 import { TableSkeleton } from './LoadingState';
+import { useDebounce } from '@/lib/useDebounce';
 
 export interface Column<T> {
   key: string;
@@ -43,28 +44,29 @@ export function DataTable<T extends Record<string, any>>({
   filterComponent,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Filter Data
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return data;
+    if (!debouncedSearch.trim()) return data;
 
     return data.filter((item) => {
       if (typeof searchKey === 'function') {
-        return searchKey(item).toLowerCase().includes(searchTerm.toLowerCase());
+        return searchKey(item).toLowerCase().includes(debouncedSearch.toLowerCase());
       } else if (searchKey) {
         const val = item[searchKey];
-        return val ? String(val).toLowerCase().includes(searchTerm.toLowerCase()) : false;
+        return val ? String(val).toLowerCase().includes(debouncedSearch.toLowerCase()) : false;
       }
 
       // Default: search all string values
       return Object.values(item).some(
-        (val) => val && String(val).toLowerCase().includes(searchTerm.toLowerCase())
+        (val) => val && String(val).toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     });
-  }, [data, searchTerm, searchKey]);
+  }, [data, debouncedSearch, searchKey]);
 
   // Sort Data
   const sortedData = useMemo(() => {

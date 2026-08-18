@@ -31,6 +31,7 @@ model Company {
   id                  String    @id @default(uuid())
   name                String
   domain              String?
+  industry            String?
   logoUrl             String?
   website             String?
   description         String?
@@ -39,7 +40,7 @@ model Company {
   contactPhone        String?
   location            String?
   isVerified          Boolean   @default(false)
-  verificationStatus  String    @default("PENDING") // PENDING, UNDER_REVIEW, VERIFIED, REJECTED
+  verificationStatus  String    @default("PENDING") // PENDING, UNDER_REVIEW, VERIFIED, REJECTED, SUSPENDED
   verificationRemarks String?
   verifiedAt          DateTime?
   verifiedBy          String?
@@ -53,17 +54,23 @@ model Company {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  clerkId      String   @unique
-  email        String   @unique
-  passwordHash String?
-  role         String   @default("STUDENT") // STUDENT, COMPANY, FACULTY_MENTOR, TNP_ADMIN, HOD_ADMIN, SUPER_ADMIN, ADMIN
-  name         String
-  phone        String?
-  profilePhoto String?
-  collegeId    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                      String    @id @default(uuid())
+  clerkId                 String    @unique
+  email                   String    @unique
+  passwordHash            String?
+  role                    String    @default("STUDENT") // STUDENT, COMPANY, FACULTY_MENTOR, TNP_ADMIN, HOD_ADMIN, SUPER_ADMIN, ADMIN
+  status                  String    @default("ACTIVE") // ACTIVE, PENDING_APPROVAL, SUSPENDED
+  isEmailVerified         Boolean   @default(true)
+  emailVerificationCode   String?
+  emailVerificationExpires DateTime?
+  resetToken              String?
+  resetTokenExpires       DateTime?
+  name                    String
+  phone                   String?
+  profilePhoto            String?
+  collegeId               String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   student           Student?
   faculty           Faculty?
@@ -80,6 +87,7 @@ model Student {
   collegeId               String
   department              String
   year                    Int
+  semester                Int?      @default(6)
   passingYear             Int?      @default(2025)
   cgpa                    Float?
   backlogsCount           Int       @default(0)
@@ -91,13 +99,20 @@ model Student {
   verificationRemarks     String?
   verifiedAt              DateTime?
   verifiedBy              String?
-  skills                  String?   // comma-separated
-  certifications          String?   // comma-separated or JSON
+  avatarUrl               String?
+  skills                  String?   // comma-separated or JSON
+  softSkills              String?   // comma-separated
+  certifications          String?   // JSON list or comma-separated
+  projects                String?   // JSON array of project objects
+  achievements            String?   // JSON array or bullet points
   experience              String?   // description or JSON
   resumeUrl               String?
   linkedinUrl             String?
   githubUrl               String?
   portfolioUrl            String?
+  preferredDomains        String?   // comma-separated
+  preferredLocation       String?
+  preferredDurationWeeks  Int?      @default(12)
   profileCompletion       Float     @default(0)
   placementReadinessScore Float?
   createdAt               DateTime  @default(now())
@@ -114,15 +129,19 @@ model Student {
 }
 
 model Faculty {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  facultyId   String   @unique
-  collegeId   String
-  department  String
-  designation String
-  phone       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  facultyId           String    @unique
+  collegeId           String
+  department          String
+  designation         String
+  phone               String?
+  verificationStatus  String    @default("PENDING") // PENDING, UNDER_REVIEW, VERIFIED, REJECTED
+  verificationRemarks String?
+  verifiedAt          DateTime?
+  verifiedBy          String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   college            College                    @relation(fields: [collegeId], references: [id])
@@ -200,11 +219,14 @@ model Application {
   id                  String    @id @default(uuid())
   studentId           String
   listingId           String
-  status              String    @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, SHORTLISTED, ASSESSMENT, SELECTED, OFFER_ISSUED, OFFER_ACCEPTED, TNP_VERIFICATION_PENDING, TNP_VERIFIED, FACULTY_ASSIGNED, JOINING_PENDING, JOINED, IN_PROGRESS, WEEKLY_PROGRESS, COMPANY_EVALUATION, COMPLETION_PENDING, COMPLETED, CERTIFICATE_ISSUED, PPO_STATUS_UPDATED, REJECTED, WITHDRAWN, CLOSED
+  status              String    @default("APPLIED") // APPLIED, FACULTY_REVIEW, FACULTY_APPROVED, COMPANY_REVIEW, SHORTLISTED, INTERVIEW, SELECTED, INTERNSHIP_ACTIVE, COMPLETED, CERTIFICATE, REJECTED, WITHDRAWN, CLOSED, SUBMITTED, UNDER_REVIEW
   coverLetter         String?
   resumeUrl           String?
   eligibilitySnapshot String?   // JSON snapshot of eligibility evaluation
+  facultyRemarks      String?
+  facultyApprovedAt   DateTime?
   companyRemarks      String?
+  interviewDate       DateTime?
   submittedAt         DateTime  @default(now())
   shortlistedAt       DateTime?
   assessmentDate      DateTime?
@@ -337,9 +359,13 @@ model DailyLog {
   date             DateTime
   tasksCompleted   String
   hoursWorked      Float
+  whatILearned     String?
   challengesFaced  String?
   plansForTomorrow String?
   skillsUsed       String?
+  attachments      String?
+  status           String    @default("SUBMITTED") // DRAFT, SUBMITTED, REVIEWED, FLAGGED
+  reviewNotes      String?
   acknowledgedAt   DateTime?
   acknowledgedById String?
   createdAt        DateTime  @default(now())
@@ -359,8 +385,10 @@ model WeeklyReport {
   nextWeekGoals   String
   hoursWorked     Float     @default(40)
   fileUrl         String?
-  status          String    @default("SUBMITTED") // SUBMITTED, APPROVED, REJECTED, REVISION_REQUESTED
+  attachments     String?
+  status          String    @default("SUBMITTED") // DRAFT, SUBMITTED, REVIEWED, APPROVED, REVISION_REQUESTED, FINAL_APPROVED
   facultyComments String?
+  revisionNotes   String?
   reviewedById    String?
   reviewedAt      DateTime?
   submittedAt     DateTime  @default(now())
@@ -382,8 +410,9 @@ model MentorFeedback {
   problemSolving  Int
   punctuality     Int
   teamwork        Int
+  initiative      Int      @default(4)
   professionalism Int      @default(4)
-  overallRating   Int
+  overallRating   Float
   comments        String?
   submittedAt     DateTime @default(now())
 
@@ -392,29 +421,36 @@ model MentorFeedback {
 }
 
 model Task {
-  id           String    @id @default(uuid())
-  internshipId String
-  title        String
-  description  String?
-  dueDate      DateTime?
-  status       String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
-  assignedById String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  internshipId   String
+  title          String
+  description    String?
+  priority       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL, URGENT
+  dueDate        DateTime?
+  status         String    @default("TODO") // TODO, IN_PROGRESS, SUBMITTED, REVIEW, COMPLETED, OVERDUE, PENDING
+  assignedById   String?
+  assignedByName String?
+  assignedByRole String?   @default("COMPANY_MENTOR")
+  attachments    String?
+  comments       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  internship Internship    @relation(fields: [internshipId], references: [id], onDelete: Cascade)
-  assignedBy CompanyMentor @relation(fields: [assignedById], references: [id])
+  internship Internship     @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  assignedBy CompanyMentor? @relation(fields: [assignedById], references: [id])
 }
 
 model Certificate {
-  id                String   @id @default(uuid())
-  internshipId      String   @unique
-  certificateNumber String   @unique
-  verificationHash  String   @unique
-  issuedAt          DateTime @default(now())
+  id                String    @id @default(uuid())
+  internshipId      String    @unique
+  certificateNumber String    @unique
+  verificationHash  String    @unique
+  issuedAt          DateTime  @default(now())
   pdfUrl            String?
   qrCode            String
-  isRevoked         Boolean  @default(false)
+  facultyApprovedAt DateTime?
+  adminApprovedAt   DateTime?
+  isRevoked         Boolean   @default(false)
   revocationReason  String?
   metadata          String?
 
@@ -465,18 +501,34 @@ model Document {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  role      String?
-  title     String
-  message   String
-  type      String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
-  isRead    Boolean  @default(false)
-  link      String?
-  metadata  String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String
+  role        String?
+  title       String
+  message     String
+  type        String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR, ACTION_REQUIRED
+  category    String   @default("system") // application, approval, rejection, interview, task, report, attendance, certificate, system
+  actionLabel String?
+  isRead      Boolean  @default(false)
+  link        String?
+  metadata    String?
+  createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  emailNotifications   Boolean  @default(true)
+  applicationAlerts    Boolean  @default(true)
+  taskAlerts           Boolean  @default(true)
+  reportReminders      Boolean  @default(true)
+  attendanceWarnings   Boolean  @default(true)
+  certificateAlerts    Boolean  @default(true)
+  systemAnnouncements  Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now())
 }
 
 model RiskAlert {

@@ -90,11 +90,6 @@ export default function SignInPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Forgot password modal state
-  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState<'email' | 'code' | 'reset' | 'done'>('email');
-  const [forgotEmail, setForgotEmail] = useState('');
-
   const navigate = useNavigate();
   const currentRole = roleOptions.find((r) => r.id === activeRole) || roleOptions[0];
   const IconComponent = currentRole.icon;
@@ -113,26 +108,25 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
-      await switchRole(activeRole);
-      toast.success(`Signed in successfully as ${currentRole.label}`);
-      navigate(currentRole.targetPath);
+      const res = await login({ email, password, role: activeRole });
+      if (res?.status === 'PENDING_APPROVAL') {
+        navigate('/pending-approval');
+        return;
+      }
+      if (res?.status === 'SUSPENDED') {
+        navigate('/account-suspended');
+        return;
+      }
+      const targetPath = 
+        res?.role === 'STUDENT' ? '/student' :
+        (res?.role === 'FACULTY' || res?.role === 'FACULTY_MENTOR') ? '/faculty' :
+        (res?.role === 'COMPANY' || res?.role === 'COMPANY_MENTOR') ? '/company' :
+        '/admin';
+      navigate(targetPath);
     } catch {
-      navigate(currentRole.targetPath);
+      // Error already toasted in AuthProvider
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleForgotSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (forgotStep === 'email') {
-      setForgotStep('code');
-      toast.info(`Verification code sent to ${forgotEmail || email}`);
-    } else if (forgotStep === 'code') {
-      setForgotStep('reset');
-    } else if (forgotStep === 'reset') {
-      setForgotStep('done');
-      toast.success('Password reset successfully');
     }
   };
 
@@ -223,17 +217,12 @@ export default function SignInPage() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-700">Password</label>
-              <button
-                type="button"
-                onClick={() => {
-                  setForgotEmail(email);
-                  setForgotStep('email');
-                  setIsForgotModalOpen(true);
-                }}
+              <Link
+                to="/forgot-password"
                 className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
               >
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             <Input
@@ -277,97 +266,20 @@ export default function SignInPage() {
 
         {/* Alternative Role View */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <span>Need to switch account?</span>
+          <span>New to the platform?</span>
           <Link to="/sign-up" className="font-semibold text-slate-800 hover:underline">
-            Choose Your Portal
+            Create an Account
           </Link>
         </div>
       </div>
 
-      {/* Forgot Password Modal */}
-      <Modal
-        isOpen={isForgotModalOpen}
-        onClose={() => setIsForgotModalOpen(false)}
-        title="Reset Password"
-        size="sm"
-      >
-        <form onSubmit={handleForgotSubmit} className="space-y-4 text-xs">
-          {forgotStep === 'email' && (
-            <>
-              <p className="text-slate-600 leading-relaxed">
-                Enter your university or company email address and we will send you a 6-digit verification code.
-              </p>
-              <Input
-                label="Email Address"
-                type="email"
-                value={forgotEmail || email}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                required
-              />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="secondary" size="sm" onClick={() => setIsForgotModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" size="sm">
-                  Send Code
-                </Button>
-              </div>
-            </>
-          )}
-
-          {forgotStep === 'code' && (
-            <>
-              <p className="text-slate-600 leading-relaxed">
-                A verification code has been dispatched. Enter the 6-digit code below:
-              </p>
-              <Input label="Verification Code" defaultValue="849201" placeholder="6-digit code" required />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="secondary" size="sm" onClick={() => setForgotStep('email')}>
-                  Back
-                </Button>
-                <Button type="submit" variant="primary" size="sm">
-                  Verify Code
-                </Button>
-              </div>
-            </>
-          )}
-
-          {forgotStep === 'reset' && (
-            <>
-              <p className="text-slate-600 leading-relaxed">Create a new secure password for your account.</p>
-              <Input label="New Password" type="password" defaultValue="newpassword123" required />
-              <Input label="Confirm Password" type="password" defaultValue="newpassword123" required />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="submit" variant="primary" size="sm">
-                  Update Password
-                </Button>
-              </div>
-            </>
-          )}
-
-          {forgotStep === 'done' && (
-            <div className="text-center py-4 space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
-                <CheckCircle2 size={24} />
-              </div>
-              <h4 className="font-bold text-sm text-slate-900">Password Updated</h4>
-              <p className="text-slate-500">You can now sign in with your updated credentials.</p>
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full"
-                onClick={() => setIsForgotModalOpen(false)}
-              >
-                Return to Sign In
-              </Button>
-            </div>
-          )}
-        </form>
-      </Modal>
-
       {/* Footer Navigation */}
       <div className="mt-6 flex items-center gap-4 text-xs text-slate-400 font-medium">
         <Link to="/" className="hover:text-slate-700">Platform Home</Link>
+        <span>•</span>
+        <Link to="/forgot-password" className="hover:text-slate-700">Forgot Password</Link>
+        <span>•</span>
+        <Link to="/account-recovery" className="hover:text-slate-700">Account Recovery</Link>
         <span>•</span>
         <Link to="/verify/CERT-2026-001" className="hover:text-slate-700">Verify Credential</Link>
       </div>

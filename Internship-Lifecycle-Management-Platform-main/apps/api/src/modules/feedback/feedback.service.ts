@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -9,14 +9,14 @@ export class FeedbackService {
     internshipId: string;
     mentorId?: string;
     evaluatorRole?: string;
-    type?: string;
+    type?: string; // MID_TERM, FINAL
     technicalSkills: number;
     communication: number;
+    teamwork: number;
     problemSolving: number;
     punctuality: number;
-    teamwork: number;
+    initiative?: number;
     professionalism?: number;
-    overallRating: number;
     comments?: string;
   }) {
     const internship = await this.prisma.internship.findUnique({
@@ -30,7 +30,18 @@ export class FeedbackService {
     if (!internship) throw new NotFoundException('Internship not found');
 
     const mentorId = data.mentorId || internship.companyMentorId;
-    const professionalism = data.professionalism !== undefined ? Number(data.professionalism) : 5;
+    const technical = Math.max(1, Math.min(5, Number(data.technicalSkills) || 4));
+    const communication = Math.max(1, Math.min(5, Number(data.communication) || 4));
+    const teamwork = Math.max(1, Math.min(5, Number(data.teamwork) || 4));
+    const problemSolving = Math.max(1, Math.min(5, Number(data.problemSolving) || 4));
+    const punctuality = Math.max(1, Math.min(5, Number(data.punctuality) || 4));
+    const initiative = Math.max(1, Math.min(5, Number(data.initiative !== undefined ? data.initiative : 4)));
+    const professionalism = Math.max(1, Math.min(5, Number(data.professionalism !== undefined ? data.professionalism : 4)));
+
+    // Actual calculated score (un-hardcoded 5-point scale and 100-point scale)
+    const rawSum = technical + communication + teamwork + problemSolving + punctuality + initiative + professionalism;
+    const calculatedOverallRating = Math.round((rawSum / 7) * 10) / 10;
+    const percentageScore = Math.round((rawSum / 35) * 100);
 
     const feedback = await this.prisma.mentorFeedback.create({
       data: {
@@ -38,37 +49,27 @@ export class FeedbackService {
         mentorId,
         evaluatorRole: data.evaluatorRole || 'COMPANY_MENTOR',
         type: data.type || 'MID_TERM',
-        technicalSkills: Number(data.technicalSkills),
-        communication: Number(data.communication),
-        problemSolving: Number(data.problemSolving),
-        punctuality: Number(data.punctuality),
-        teamwork: Number(data.teamwork),
+        technicalSkills: technical,
+        communication,
+        problemSolving,
+        punctuality,
+        teamwork,
+        initiative,
         professionalism,
-        overallRating: Number(data.overallRating),
+        overallRating: calculatedOverallRating,
         comments: data.comments,
       },
       include: { mentor: { include: { user: true } } },
     });
 
-    const averageRating = (
-      Number(data.technicalSkills) +
-      Number(data.communication) +
-      Number(data.problemSolving) +
-      Number(data.punctuality) +
-      Number(data.teamwork) +
-      professionalism +
-      Number(data.overallRating)
-    ) / 7;
-
     // Update Placement Readiness Score
-    const newPlacementScore = Math.round(averageRating * 20); // 5-star converted to 100-point scale
     await this.prisma.internship.update({
       where: { id: data.internshipId },
-      data: { placementReadinessScore: newPlacementScore },
+      data: { placementReadinessScore: percentageScore },
     });
     await this.prisma.student.update({
       where: { id: internship.studentId },
-      data: { placementReadinessScore: newPlacementScore },
+      data: { placementReadinessScore: percentageScore },
     });
 
     // Notify Student
@@ -76,21 +77,53 @@ export class FeedbackService {
       data: {
         userId: internship.student.userId,
         role: 'STUDENT',
-        title: 'Performance Evaluation Received 🌟',
-        message: `${internship.company.name} submitted a ${data.type || 'Milestone'} evaluation (Rating: ${data.overallRating}/5).`,
+        title: `${data.type === 'FINAL' ? 'Final' : 'Mid-Term'} Evaluation Published 🌟`,
+        message: `${internship.company.name} published your evaluation with an overall score of ${calculatedOverallRating}/5.0 (${percentageScore}%).`,
         type: 'SUCCESS',
         link: '/student/active/feedback',
       },
     });
 
-    return { feedback, averageRating: Math.round(averageRating * 10) / 10 };
+    return {
+      feedback,
+      scores: {
+        overallScore: calculatedOverallRating,
+        percentageScore,
+        technical,
+        communication,
+        teamwork,
+        problemSolving,
+        punctuality,
+        initiative,
+        professionalism,
+      },
+    };
   }
 
   async findByInternship(internshipId: string) {
-    return this.prisma.mentorFeedback.findMany({
+    const records = await this.prisma.mentorFeedback.findMany({
       where: { internshipId },
       include: { mentor: { include: { user: true } } },
       orderBy: { submittedAt: 'desc' },
+    });
+
+    return records.map((f) => {
+      const sum = f.technicalSkills + f.communication + f.teamwork + f.problemSolving + f.punctuality + (f.initiative || 4) + f.professionalism;
+      const calcOverall = Math.round((sum / 7) * 10) / 10;
+      return {
+        ...f,
+        calculatedScore: {
+          overallScore: calcOverall,
+          percentageScore: Math.round((sum / 35) * 100),
+          technical: f.technicalSkills,
+          communication: f.communication,
+          teamwork: f.teamwork,
+          problemSolving: f.problemSolving,
+          punctuality: f.punctuality,
+          initiative: f.initiative || 4,
+          professionalism: f.professionalism,
+        },
+      };
     });
   }
 }

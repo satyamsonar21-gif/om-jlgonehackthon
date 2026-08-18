@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, Role } from './Sidebar';
 import { MobileNav } from './MobileNav';
+import { MobileBottomNav } from './MobileBottomNav';
 import { SidebarProvider } from './SidebarContext';
 import { getRoleFromPath, applyTheme, type RoleKey } from '@/design-system/tokens';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { CareerAssistant } from '@/components/ai/CareerAssistant';
 
 const roleKeyToRole: Record<RoleKey, Role> = {
   student: 'STUDENT',
@@ -16,7 +18,7 @@ const roleKeyToRole: Record<RoleKey, Role> = {
 export default function DashboardLayout() {
   const location = useLocation();
   const roleKey = getRoleFromPath(location.pathname);
-  const role = roleKeyToRole[roleKey];
+  const role = roleKeyToRole[roleKey] || 'STUDENT';
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   useEffect(() => {
@@ -37,11 +39,17 @@ export default function DashboardLayout() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col overflow-y-auto min-w-0 transition-all duration-200">
+        <main className="flex-1 flex flex-col overflow-y-auto min-w-0 pb-16 md:pb-0 transition-all duration-200">
           <ErrorBoundary>
             <Outlet context={{ onOpenMobileNav: () => setIsMobileNavOpen(true) }} />
           </ErrorBoundary>
         </main>
+
+        {/* Mobile Bottom Quick-Access Bar */}
+        <MobileBottomNav role={role} />
+
+        {/* Floating AI Career Assistant */}
+        <CareerAssistant />
       </div>
     </SidebarProvider>
   );

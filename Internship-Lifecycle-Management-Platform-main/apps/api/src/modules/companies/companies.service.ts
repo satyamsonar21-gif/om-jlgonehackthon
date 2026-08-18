@@ -77,8 +77,15 @@ export class CompaniesService {
   }
 
   async verifyCompany(id: string, body: { status: string; remarks?: string; verifiedBy?: string }) {
-    const company = await this.prisma.company.findUnique({ where: { id } });
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      include: { mentors: { include: { user: true } } },
+    });
     if (!company) throw new NotFoundException('Company not found');
+
+    if (body.status === 'REJECTED' && (!body.remarks || body.remarks.trim().length === 0)) {
+      throw new ForbiddenException('A formal rejection reason is required for institutional compliance.');
+    }
 
     const previousStatus = company.verificationStatus;
     const isVerified = body.status === 'VERIFIED';
@@ -88,11 +95,37 @@ export class CompaniesService {
       data: {
         isVerified,
         verificationStatus: body.status,
-        verificationRemarks: body.remarks,
-        verifiedAt: new Date(),
-        verifiedBy: body.verifiedBy || 'T&P Office',
+        verificationRemarks: body.remarks || null,
+        verifiedAt: body.status === 'VERIFIED' ? new Date() : company.verifiedAt,
+        verifiedBy: body.verifiedBy || 'T&P Administration',
       },
+      include: { mentors: true },
     });
+
+    // Update linked company mentor user statuses if verified or suspended
+    if (company.mentors && company.mentors.length > 0) {
+      for (const mentor of company.mentors) {
+        if (mentor.userId) {
+          const userStatus = body.status === 'SUSPENDED' ? 'SUSPENDED' : body.status === 'VERIFIED' ? 'ACTIVE' : 'PENDING_APPROVAL';
+          await this.prisma.user.update({
+            where: { id: mentor.userId },
+            data: { status: userStatus },
+          });
+
+          // Notify Mentor
+          await this.prisma.notification.create({
+            data: {
+              userId: mentor.userId,
+              role: 'COMPANY_MENTOR',
+              title: `Institutional Verification: ${body.status}`,
+              message: body.remarks || `Your corporate profile '${company.name}' verification status has been updated to ${body.status}.`,
+              type: body.status === 'VERIFIED' ? 'SUCCESS' : body.status === 'REJECTED' ? 'ERROR' : 'WARNING',
+              link: '/company/profile',
+            },
+          });
+        }
+      }
+    }
 
     // Record Audit Log
     await this.prisma.auditLog.create({
@@ -110,3 +143,4 @@ export class CompaniesService {
     return updated;
   }
 }
+

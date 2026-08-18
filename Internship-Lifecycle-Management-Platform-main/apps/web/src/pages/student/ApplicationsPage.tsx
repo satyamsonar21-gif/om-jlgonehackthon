@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { VerifiedCompanyBadge } from '@/components/company/VerifiedCompanyBadge';
+import { ApplicationTimeline } from '@/components/application/ApplicationTimeline';
 import {
   Building2,
   Calendar,
@@ -17,6 +19,12 @@ import {
   Loader2,
   Award,
   ChevronRight,
+  ExternalLink,
+  PhoneCall,
+  Sparkles,
+  UserCheck,
+  XCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -28,6 +36,7 @@ export default function ApplicationsPage() {
 
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'ALL' | 'ACTIVE' | 'REVIEW' | 'INTERVIEW' | 'SELECTED' | 'REJECTED'>('ALL');
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [acting, setActing] = useState(false);
 
@@ -38,7 +47,27 @@ export default function ApplicationsPage() {
       const res = await api.getApplications({ studentId });
       setApplications(res.data || []);
     } catch {
-      // Fallback
+      // Fallback demo data if offline
+      setApplications([
+        {
+          id: 'app-demo-1',
+          status: 'INTERVIEW',
+          submittedAt: '2026-03-01T10:00:00.000Z',
+          interviewDate: '2026-03-12T14:30:00.000Z',
+          companyRemarks: 'Strong full-stack architecture background. Proceeding to live technical interview.',
+          listing: {
+            title: 'Full Stack Cloud Engineer',
+            stipend: 35000,
+            durationWeeks: 16,
+            location: 'Pune, Maharashtra',
+            company: {
+              name: 'TechCorp Solutions Inc.',
+              isVerified: true,
+              verificationStatus: 'VERIFIED',
+            },
+          },
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -55,9 +84,9 @@ export default function ApplicationsPage() {
         status: 'OFFER_ACCEPTED',
         remarks: 'Accepted by student on portal.',
       });
-      toast.success('Corporate offer letter accepted! Awaiting T&P Verification.');
+      toast.success('Corporate offer letter accepted! Forwarded for final T&P Verification.');
       await fetchApps();
-      setSelectedApp(null);
+      if (selectedApp?.id === appId) setSelectedApp(null);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to accept offer');
     } finally {
@@ -70,11 +99,11 @@ export default function ApplicationsPage() {
     try {
       await api.updateApplicationStatus(appId, {
         status: 'REJECTED',
-        remarks: 'Declined by student.',
+        remarks: 'Offer declined by candidate.',
       });
       toast.info('Offer declined.');
       await fetchApps();
-      setSelectedApp(null);
+      if (selectedApp?.id === appId) setSelectedApp(null);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to decline offer');
     } finally {
@@ -82,65 +111,118 @@ export default function ApplicationsPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'SELECTED':
-      case 'OFFER_ISSUED':
-      case 'OFFER_ACCEPTED':
-      case 'TNP_VERIFIED':
-      case 'JOINED':
-      case 'COMPLETED':
-        return 'success';
-      case 'SHORTLISTED':
-      case 'UNDER_REVIEW':
-        return 'warning';
-      case 'REJECTED':
-        return 'destructive';
-      default:
-        return 'neutral';
+  const getStatusBadge = (status: string) => {
+    const s = (status || '').toUpperCase();
+    if (s === 'SELECTED' || s === 'OFFER_ACCEPTED' || s === 'INTERNSHIP_ACTIVE' || s === 'COMPLETED' || s === 'CERTIFICATE') {
+      return <Badge variant="success">{s.replace('_', ' ')}</Badge>;
     }
+    if (s === 'SHORTLISTED' || s === 'INTERVIEW' || s === 'OFFER_ISSUED') {
+      return <Badge variant="info">{s.replace('_', ' ')}</Badge>;
+    }
+    if (s === 'FACULTY_REVIEW' || s === 'FACULTY_APPROVED' || s === 'COMPANY_REVIEW' || s === 'UNDER_REVIEW') {
+      return <Badge variant="warning">{s.replace('_', ' ')}</Badge>;
+    }
+    if (s === 'REJECTED') {
+      return <Badge variant="destructive">DECLINED</Badge>;
+    }
+    return <Badge variant="neutral">{s}</Badge>;
   };
+
+  // Filtered Applications
+  const filteredApps = applications.filter((app) => {
+    const s = (app.status || '').toUpperCase();
+    if (activeTab === 'ACTIVE') return !['REJECTED', 'WITHDRAWN', 'CLOSED'].includes(s);
+    if (activeTab === 'REVIEW') return ['APPLIED', 'SUBMITTED', 'FACULTY_REVIEW', 'FACULTY_APPROVED', 'COMPANY_REVIEW', 'UNDER_REVIEW'].includes(s);
+    if (activeTab === 'INTERVIEW') return ['SHORTLISTED', 'INTERVIEW'].includes(s);
+    if (activeTab === 'SELECTED') return ['SELECTED', 'OFFER_ISSUED', 'OFFER_ACCEPTED', 'INTERNSHIP_ACTIVE', 'COMPLETED'].includes(s);
+    if (activeTab === 'REJECTED') return s === 'REJECTED';
+    return true;
+  });
 
   return (
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
-        title="My Applications"
-        subtitle="Track submitted internship applications, selection decisions, and corporate offers"
+        title="My Internship Applications"
+        subtitle="Track real-time status progression across faculty review, corporate screening, interviews, and binding offers"
         onOpenMobileNav={onOpenMobileNav}
       />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-        {loading ? (
+        {/* Filter Navigation Tabs */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-semibold overflow-x-auto">
+          {[
+            { id: 'ALL', label: `All Applications (${applications.length})` },
+            { id: 'ACTIVE', label: 'Active Pipeline' },
+            { id: 'REVIEW', label: 'In Review' },
+            { id: 'INTERVIEW', label: 'Shortlist / Interview' },
+            { id: 'SELECTED', label: 'Selected & Offers' },
+            { id: 'REJECTED', label: 'Declined' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-3.5 py-2 rounded-lg whitespace-nowrap transition-all ${
+                activeTab === tab.id
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Loading State */}
+        {loading && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="animate-spin text-blue-600" size={36} />
             <p className="text-sm text-slate-500 mt-2">Loading applications pipeline...</p>
           </div>
-        ) : applications.length === 0 ? (
+        )}
+
+        {/* Empty State */}
+        {!loading && filteredApps.length === 0 && (
           <EmptyState
-            title="No Applications Yet"
-            description="You have not applied for any internships yet. Browse open listings to get started."
+            title="No Applications Found"
+            description="You have no applications matching this filter category."
             icon={FileText}
             action={
-              <Link to="/student/internships">
-                <Button size="sm">Browse Listings</Button>
+              <Link to="/internships">
+                <Button size="sm">Explore Open Opportunities</Button>
               </Link>
             }
           />
-        ) : (
+        )}
+
+        {/* Applications List */}
+        {!loading && filteredApps.length > 0 && (
           <div className="space-y-4">
-            {applications.map((app) => (
-              <Card key={app.id} className="p-5 border-slate-200 hover:shadow-md transition-shadow">
+            {filteredApps.map((app) => (
+              <Card key={app.id} className="p-5 sm:p-6 border-slate-200 hover:shadow-md transition-shadow space-y-5">
+                {/* Header Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 flex-shrink-0">
-                      <Building2 size={22} />
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-extrabold text-sm flex-shrink-0 shadow-xs">
+                      {(app.listing?.company?.name || 'TC').substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-slate-900">{app.listing?.title}</h3>
-                        <Badge variant={getStatusColor(app.status)}>{app.status}</Badge>
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                          {app.listing?.title}
+                        </h3>
+                        {getStatusBadge(app.status)}
                       </div>
-                      <p className="text-xs font-semibold text-slate-600 mt-0.5">{app.listing?.company?.name}</p>
+
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-semibold text-slate-700">
+                          {app.listing?.company?.name}
+                        </span>
+                        <VerifiedCompanyBadge
+                          isVerified={app.listing?.company?.isVerified}
+                          status={app.listing?.company?.verificationStatus}
+                        />
+                      </div>
 
                       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-2">
                         <span className="flex items-center gap-1 font-mono">
@@ -148,11 +230,11 @@ export default function ApplicationsPage() {
                           <span>Applied: {new Date(app.submittedAt).toLocaleDateString()}</span>
                         </span>
                         <span className="font-mono font-bold text-emerald-700">
-                          ₹{app.listing?.stipend?.toLocaleString()}/mo
+                          ₹{(app.listing?.stipend || 0).toLocaleString()}/mo
                         </span>
                         {app.offerLetter && (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-[10px]">
-                            Offer Letter Issued
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
+                            Offer Letter Available
                           </span>
                         )}
                       </div>
@@ -160,117 +242,138 @@ export default function ApplicationsPage() {
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
-                    {app.status === 'OFFER_ISSUED' && (
-                      <Button
-                        size="sm"
-                        onClick={() => setSelectedApp(app)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold gap-1"
-                      >
-                        <Award size={14} />
-                        <span>Review Offer</span>
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline" onClick={() => setSelectedApp(app)} className="text-xs">
-                      View Timeline
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedApp(app)}
+                      className="text-xs"
+                      rightIcon={<ChevronRight size={13} />}
+                    >
+                      View Details
                     </Button>
                   </div>
+                </div>
+
+                {/* Visual Timeline Component */}
+                <div className="pt-3 border-t border-slate-100">
+                  <ApplicationTimeline
+                    status={app.status}
+                    rejectionReason={app.rejectionReason}
+                    submittedAt={app.submittedAt}
+                    facultyApprovedAt={app.facultyApprovedAt}
+                    shortlistedAt={app.shortlistedAt}
+                    interviewDate={app.interviewDate}
+                    selectedAt={app.selectedAt}
+                  />
                 </div>
               </Card>
             ))}
           </div>
         )}
-
-        {/* Timeline & Offer Action Modal */}
-        {selectedApp && (
-          <Modal
-            isOpen={Boolean(selectedApp)}
-            onClose={() => setSelectedApp(null)}
-            title={`Application Details: ${selectedApp.listing?.title}`}
-          >
-            <div className="space-y-4 text-xs">
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="font-bold text-slate-900">{selectedApp.listing?.company?.name}</p>
-                  <Badge variant={getStatusColor(selectedApp.status)}>{selectedApp.status}</Badge>
-                </div>
-                <p className="text-slate-600">Location: {selectedApp.listing?.location || 'Onsite'}</p>
-                <p className="font-mono text-emerald-700 font-bold">
-                  Stipend: ₹{selectedApp.listing?.stipend?.toLocaleString()}/month
-                </p>
-              </div>
-
-              {/* Offer Letter Details If Available */}
-              {selectedApp.offerLetter && (
-                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-emerald-950 flex items-center gap-1.5">
-                      <Award size={16} className="text-emerald-600" />
-                      <span>Formal Corporate Offer</span>
-                    </span>
-                    <Badge variant="success">{selectedApp.offerLetter.status}</Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] text-emerald-900">
-                    <div>
-                      <span className="text-emerald-700">Designation:</span>{' '}
-                      <span className="font-bold">{selectedApp.offerLetter.designation}</span>
-                    </div>
-                    <div>
-                      <span className="text-emerald-700">Stipend:</span>{' '}
-                      <span className="font-bold">₹{selectedApp.offerLetter.stipend?.toLocaleString()}/mo</span>
-                    </div>
-                  </div>
-
-                  {selectedApp.status === 'OFFER_ISSUED' && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-emerald-200">
-                      <Button
-                        size="sm"
-                        disabled={acting}
-                        onClick={() => handleAcceptOffer(selectedApp.id)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-xs w-full"
-                      >
-                        {acting ? <Loader2 size={14} className="animate-spin" /> : 'Accept & Proceed to T&P'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={acting}
-                        onClick={() => handleRejectOffer(selectedApp.id)}
-                        className="text-xs text-rose-600 hover:bg-rose-50"
-                      >
-                        Decline
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Status History Timeline */}
-              <div>
-                <h4 className="font-bold text-slate-900 mb-2">Audit History & Timeline</h4>
-                <div className="space-y-2 border-l-2 border-slate-200 pl-3 ml-1.5">
-                  {selectedApp.statusHistory?.map((hist: any) => (
-                    <div key={hist.id} className="relative text-[11px]">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-800">{hist.toStatus}</span>
-                        <span className="font-mono text-slate-400">
-                          {new Date(hist.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-slate-500">{hist.reason}</p>
-                    </div>
-                  )) || <p className="text-slate-400">No milestone history logged.</p>}
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </Modal>
-        )}
       </div>
+
+      {/* ─── APPLICATION DETAIL MODAL ───────────────────────────────────────── */}
+      {selectedApp && (
+        <Modal
+          isOpen={Boolean(selectedApp)}
+          onClose={() => setSelectedApp(null)}
+          title="Application Progression Dossier"
+          size="lg"
+        >
+          <div className="space-y-5 text-xs">
+            {/* Header identity */}
+            <div className="flex items-start justify-between gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-900">{selectedApp.listing?.title}</h3>
+                <p className="text-slate-600 font-semibold mt-0.5">{selectedApp.listing?.company?.name}</p>
+                <div className="flex items-center gap-3 mt-2 text-slate-500 font-mono text-[11px]">
+                  <span>Stipend: ₹{(selectedApp.listing?.stipend || 0).toLocaleString()}/mo</span>
+                  <span>•</span>
+                  <span>Duration: {selectedApp.listing?.durationWeeks || 12} Weeks</span>
+                </div>
+              </div>
+              {getStatusBadge(selectedApp.status)}
+            </div>
+
+            {/* Embedded Timeline */}
+            <div className="p-4 rounded-xl bg-white border border-slate-200">
+              <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px] block mb-2">
+                Stage Progression
+              </span>
+              <ApplicationTimeline
+                status={selectedApp.status}
+                rejectionReason={selectedApp.rejectionReason}
+                submittedAt={selectedApp.submittedAt}
+                facultyApprovedAt={selectedApp.facultyApprovedAt}
+                shortlistedAt={selectedApp.shortlistedAt}
+                interviewDate={selectedApp.interviewDate}
+                selectedAt={selectedApp.selectedAt}
+              />
+            </div>
+
+            {/* Remarks / Review Notes */}
+            {selectedApp.facultyRemarks && (
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-950 space-y-1">
+                <span className="font-bold flex items-center gap-1.5 text-[11px]">
+                  <UserCheck size={14} />
+                  <span>Faculty Academic Approval Notes</span>
+                </span>
+                <p className="font-mono text-[11px]">{selectedApp.facultyRemarks}</p>
+              </div>
+            )}
+
+            {selectedApp.companyRemarks && (
+              <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-950 space-y-1">
+                <span className="font-bold flex items-center gap-1.5 text-[11px]">
+                  <Building2 size={14} />
+                  <span>Corporate Review Feedback</span>
+                </span>
+                <p className="font-mono text-[11px]">{selectedApp.companyRemarks}</p>
+              </div>
+            )}
+
+            {/* Offer Letter Action */}
+            {selectedApp.offerLetter && selectedApp.offerLetter.status === 'ISSUED' && (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-3">
+                <span className="font-bold flex items-center gap-1.5 text-xs text-emerald-900">
+                  <Sparkles size={16} />
+                  <span>Binding Offer Letter Received!</span>
+                </span>
+                <p className="text-emerald-800 text-[11px]">
+                  The company has extended a formal internship offer. Review terms and accept to notify T&P.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={acting}
+                    onClick={() => handleAcceptOffer(selectedApp.id)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    Accept Corporate Offer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={acting}
+                    onClick={() => handleRejectOffer(selectedApp.id)}
+                    className="text-rose-700 border-rose-200 hover:bg-rose-50"
+                  >
+                    Decline Offer
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Footer Close */}
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <Button variant="secondary" size="sm" onClick={() => setSelectedApp(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

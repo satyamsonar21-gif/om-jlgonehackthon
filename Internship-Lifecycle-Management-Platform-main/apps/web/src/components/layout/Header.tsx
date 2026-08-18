@@ -9,6 +9,8 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Role } from './Sidebar';
 import { getRoleFromPath } from '@/design-system/tokens';
 
+import { useUnreadNotificationCount } from '@/lib/queries';
+
 interface HeaderProps {
   title?: string;
   subtitle?: string;
@@ -29,6 +31,8 @@ export function Header({ title, subtitle, onOpenMobileNav }: HeaderProps) {
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const { data: unreadCount = 0 } = useUnreadNotificationCount();
 
   // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
@@ -115,7 +119,11 @@ export function Header({ title, subtitle, onOpenMobileNav }: HeaderProps) {
             aria-label="Open notifications"
           >
             <Bell size={16} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--role-accent)] ring-2 ring-white" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-600 text-white font-mono font-black text-[10px] flex items-center justify-center shadow-xs border-2 border-white animate-in zoom-in">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
 
           <NotificationCenter

@@ -28,11 +28,21 @@ export type VerificationStatus =
   | 'CORRECTION_REQUIRED';
 
 export type ApplicationStatus =
+  | 'APPLIED'
+  | 'FACULTY_REVIEW'
+  | 'FACULTY_APPROVED'
+  | 'COMPANY_REVIEW'
+  | 'SHORTLISTED'
+  | 'INTERVIEW'
+  | 'SELECTED'
+  | 'INTERNSHIP_ACTIVE'
+  | 'COMPLETED'
+  | 'CERTIFICATE'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+  | 'CLOSED'
   | 'SUBMITTED'
   | 'UNDER_REVIEW'
-  | 'SHORTLISTED'
-  | 'ASSESSMENT'
-  | 'SELECTED'
   | 'OFFER_ISSUED'
   | 'OFFER_ACCEPTED'
   | 'TNP_VERIFICATION_PENDING'
@@ -44,12 +54,8 @@ export type ApplicationStatus =
   | 'WEEKLY_PROGRESS'
   | 'COMPANY_EVALUATION'
   | 'COMPLETION_PENDING'
-  | 'COMPLETED'
   | 'CERTIFICATE_ISSUED'
-  | 'PPO_STATUS_UPDATED'
-  | 'REJECTED'
-  | 'WITHDRAWN'
-  | 'CLOSED';
+  | 'PPO_STATUS_UPDATED';
 
 export type OfferStatus = 'PENDING' | 'ISSUED' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
 
@@ -59,13 +65,28 @@ export type InternshipStatus = 'ACTIVE' | 'IN_PROGRESS' | 'COMPLETION_PENDING' |
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
 
-export type ReportStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'URGENT';
+
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'SUBMITTED' | 'REVIEW' | 'COMPLETED' | 'OVERDUE' | 'PENDING';
+
+export type DailyLogStatus = 'DRAFT' | 'SUBMITTED' | 'REVIEWED' | 'FLAGGED';
+
+export type ReportStatus = 'DRAFT' | 'SUBMITTED' | 'REVIEWED' | 'APPROVED' | 'REVISION_REQUESTED' | 'FINAL_APPROVED' | 'REJECTED';
 
 export type FeedbackType = 'MID_TERM' | 'FINAL';
 
-export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+export type NotificationType = 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR' | 'ACTION_REQUIRED';
 
-export type NotificationType = 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR';
+export type NotificationCategory =
+  | 'application'
+  | 'approval'
+  | 'rejection'
+  | 'interview'
+  | 'task'
+  | 'report'
+  | 'attendance'
+  | 'certificate'
+  | 'system';
 
 export type PPOStatus = 'NOT_APPLICABLE' | 'PENDING' | 'RECOMMENDED' | 'OFFERED' | 'ACCEPTED' | 'REJECTED';
 
@@ -98,6 +119,8 @@ export interface User {
   clerkId: string;
   email: string;
   role: Role;
+  status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'SUSPENDED';
+  isEmailVerified?: boolean;
   name: string;
   phone?: string;
   profilePhoto?: string;
@@ -111,6 +134,7 @@ export interface Student extends User {
   collegeId: string;
   department: string;
   year: number;
+  semester?: number;
   passingYear?: number;
   cgpa?: number;
   backlogsCount: number;
@@ -122,13 +146,20 @@ export interface Student extends User {
   verificationRemarks?: string;
   verifiedAt?: string;
   verifiedBy?: string;
+  avatarUrl?: string;
   skills: string[];
+  softSkills?: string[];
   certifications?: string[];
+  projects?: any[];
+  achievements?: any[];
   experience?: string;
   resumeUrl?: string;
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
+  preferredDomains?: string[];
+  preferredLocation?: string;
+  preferredDurationWeeks?: number;
   profileCompletion: number;
   placementReadinessScore?: number;
 }
@@ -138,6 +169,10 @@ export interface Faculty extends User {
   collegeId: string;
   department: string;
   designation: string;
+  verificationStatus?: VerificationStatus;
+  verificationRemarks?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
 }
 
 export interface CompanyMentor extends User {
@@ -157,6 +192,7 @@ export interface Company {
   id: string;
   name: string;
   domain?: string;
+  industry?: string;
   logoUrl?: string;
   website?: string;
   description?: string;
@@ -213,7 +249,10 @@ export interface Application {
   coverLetter?: string;
   resumeUrl?: string;
   eligibilitySnapshot?: string;
+  facultyRemarks?: string;
+  facultyApprovedAt?: string;
   companyRemarks?: string;
+  interviewDate?: string;
   submittedAt: string;
   shortlistedAt?: string;
   assessmentDate?: string;
@@ -224,6 +263,16 @@ export interface Application {
   withdrawnAt?: string;
   offerLetter?: OfferLetter;
   tnpVerification?: TNPVerification;
+  statusHistory?: ApplicationStatusHistory[];
+}
+
+export interface ApplicationStatusHistory {
+  id: string;
+  applicationId: string;
+  status: ApplicationStatus;
+  changedBy: string;
+  remarks?: string;
+  createdAt: string;
 }
 
 export interface OfferLetter {
@@ -295,9 +344,13 @@ export interface DailyLog {
   date: string;
   tasksCompleted: string;
   hoursWorked: number;
+  whatILearned?: string;
   challengesFaced?: string;
   plansForTomorrow?: string;
   skillsUsed?: string;
+  attachments?: string;
+  status: DailyLogStatus;
+  reviewNotes?: string;
   acknowledgedAt?: string;
   acknowledgedById?: string;
   createdAt: string;
@@ -313,11 +366,14 @@ export interface WeeklyReport {
   nextWeekGoals: string;
   hoursWorked: number;
   fileUrl?: string;
+  attachments?: string;
   status: ReportStatus;
   facultyComments?: string;
+  revisionNotes?: string;
   reviewedById?: string;
   reviewedAt?: string;
   submittedAt: string;
+  updatedAt?: string;
 }
 
 export interface MentorFeedback {
@@ -331,6 +387,7 @@ export interface MentorFeedback {
   problemSolving: number;
   punctuality: number;
   teamwork: number;
+  initiative?: number;
   professionalism: number;
   overallRating: number;
   comments?: string;
@@ -342,9 +399,14 @@ export interface Task {
   internshipId: string;
   title: string;
   description?: string;
+  priority: TaskPriority;
   dueDate?: string;
   status: TaskStatus;
-  assignedById: string;
+  assignedById?: string;
+  assignedByName?: string;
+  assignedByRole?: string;
+  attachments?: string;
+  comments?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -357,8 +419,11 @@ export interface Certificate {
   issuedAt: string;
   pdfUrl?: string;
   qrCode: string;
+  facultyApprovedAt?: string;
+  adminApprovedAt?: string;
   isRevoked: boolean;
   revocationReason?: string;
+  metadata?: string;
 }
 
 export interface PPO {
@@ -401,9 +466,26 @@ export interface Notification {
   title: string;
   message: string;
   type: NotificationType;
+  category?: NotificationCategory;
+  actionLabel?: string;
   isRead: boolean;
   link?: string;
+  metadata?: string;
   createdAt: string;
+}
+
+export interface NotificationPreference {
+  id: string;
+  userId: string;
+  emailNotifications: boolean;
+  applicationAlerts: boolean;
+  taskAlerts: boolean;
+  reportReminders: boolean;
+  attendanceWarnings: boolean;
+  certificateAlerts: boolean;
+  systemAnnouncements: boolean;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 export interface RiskAlert {

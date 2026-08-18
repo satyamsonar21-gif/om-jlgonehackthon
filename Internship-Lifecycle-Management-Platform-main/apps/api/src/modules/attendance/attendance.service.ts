@@ -11,6 +11,7 @@ export class AttendanceService {
     status: string;
     markedById?: string;
     notes?: string;
+    threshold?: number;
   }) {
     const rawDate = data.date ? new Date(data.date) : new Date();
     const dateOnly = new Date(rawDate.toISOString().split('T')[0]);
@@ -54,13 +55,16 @@ export class AttendanceService {
       data: { attendancePercentage: stats.percentage },
     });
 
-    // Automated Risk Detection: If attendance drops below 75%, trigger RiskAlert
-    if (stats.percentage < 75.0 && stats.total >= 5) {
+    // Configurable threshold: Default to 75.0% institutional threshold
+    const attendanceThreshold = data.threshold !== undefined ? data.threshold : 75.0;
+
+    // Automated Risk Detection: If attendance drops below threshold, trigger RiskAlert
+    if (stats.percentage < attendanceThreshold && stats.total >= 3) {
       await this.prisma.riskAlert.upsert({
         where: { id: `risk_att_${data.internshipId}` },
         update: {
-          riskLevel: stats.percentage < 60 ? 'HIGH' : 'MEDIUM',
-          description: `Attendance rate dropped to ${stats.percentage.toFixed(1)}% (${stats.present}/${stats.total} days present).`,
+          riskLevel: stats.percentage < (attendanceThreshold - 15) ? 'HIGH' : 'MEDIUM',
+          description: `Attendance rate dropped to ${stats.percentage.toFixed(1)}% (${stats.present}/${stats.total} days present, threshold is ${attendanceThreshold}%).`,
           isResolved: false,
         },
         create: {
@@ -68,9 +72,9 @@ export class AttendanceService {
           internshipId: data.internshipId,
           studentId: internship.studentId,
           facultyMentorId: internship.facultyMentorId,
-          riskLevel: stats.percentage < 60 ? 'HIGH' : 'MEDIUM',
+          riskLevel: stats.percentage < (attendanceThreshold - 15) ? 'HIGH' : 'MEDIUM',
           riskType: 'LOW_ATTENDANCE',
-          description: `Attendance rate dropped to ${stats.percentage.toFixed(1)}% (${stats.present}/${stats.total} days present).`,
+          description: `Attendance rate dropped to ${stats.percentage.toFixed(1)}% (${stats.present}/${stats.total} days present, threshold is ${attendanceThreshold}%).`,
           isResolved: false,
         },
       });
@@ -106,5 +110,47 @@ export class AttendanceService {
       leave,
       percentage: Math.round(percentage * 10) / 10,
     };
+  }
+
+  async getBatchAttendance(facultyId?: string, threshold: number = 75.0) {
+    const where: any = {};
+    if (facultyId) {
+      where.OR = [{ facultyMentorId: facultyId }, { facultyMentor: { userId: facultyId } }];
+    }
+
+    const internships = await this.prisma.internship.findMany({
+      where,
+      include: {
+        student: { include: { user: true } },
+        company: true,
+        attendanceRecords: true,
+      },
+    });
+
+    return internships.map((internship) => {
+      const records = internship.attendanceRecords;
+      const total = records.length;
+      const present = records.filter((r) => r.status === 'PRESENT').length;
+      const absent = records.filter((r) => r.status === 'ABSENT').length;
+      const halfDay = records.filter((r) => r.status === 'HALF_DAY').length;
+      const leave = records.filter((r) => r.status === 'LEAVE').length;
+      const percentage = total > 0 ? Math.round(((present + halfDay * 0.5) / total) * 1000) / 10 : 100.0;
+      const isFlagged = total >= 3 && percentage < threshold;
+
+      return {
+        internshipId: internship.id,
+        studentId: internship.studentId,
+        studentName: internship.student?.user?.name,
+        department: internship.student?.department,
+        companyName: internship.company?.name,
+        totalDays: total,
+        presentDays: present,
+        absentDays: absent,
+        leaveDays: leave,
+        attendancePercentage: percentage,
+        isFlagged,
+        threshold,
+      };
+    });
   }
 }

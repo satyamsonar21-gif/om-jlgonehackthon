@@ -39,7 +39,20 @@ export function setAuthToken(token: string | null) {
 
 export const api = {
   // Auth
-  login: (email: string) => apiClient.post('/auth/login', { email }),
+  login: (data: { email: string; password?: string; role?: string } | string) =>
+    typeof data === 'string'
+      ? apiClient.post('/auth/login', { email: data })
+      : apiClient.post('/auth/login', data),
+  registerStudent: (data: any) => apiClient.post('/auth/register/student', data),
+  registerFaculty: (data: any) => apiClient.post('/auth/register/faculty', data),
+  registerCompany: (data: any) => apiClient.post('/auth/register/company', data),
+  forgotPassword: (email: string) => apiClient.post('/auth/forgot-password', { email }),
+  resetPassword: (data: { email: string; token: string; newPassword: string }) =>
+    apiClient.post('/auth/reset-password', data),
+  verifyEmail: (data: { email: string; code: string }) => apiClient.post('/auth/verify-email', data),
+  resendVerification: (email: string) => apiClient.post('/auth/resend-verification', { email }),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    apiClient.post('/auth/change-password', data),
   getDemoUsers: () => apiClient.get('/auth/demo-users'),
   switchRole: (role: string) => apiClient.post('/auth/switch-role', { role }),
   syncUser: (data: any) => apiClient.post('/auth/sync-user', data),
@@ -80,7 +93,9 @@ export const api = {
   getApplication: (id: string) => apiClient.get(`/applications/${id}`),
   updateApplicationStatus: (id: string, data: any) => apiClient.patch(`/applications/${id}/status`, data),
   facultyReview: (id: string, data: any) => apiClient.patch(`/applications/${id}/faculty-review`, data),
+  facultyReviewApplication: (id: string, data: any) => apiClient.patch(`/applications/${id}/faculty-review`, data),
   companyReview: (id: string, data: any) => apiClient.patch(`/applications/${id}/company-review`, data),
+  companyReviewApplication: (id: string, data: any) => apiClient.patch(`/applications/${id}/company-review`, data),
 
   // Internships
   getInternships: (params?: any) => apiClient.get('/internships', { params }),
@@ -93,6 +108,8 @@ export const api = {
   markAttendance: (data: any) => apiClient.post('/attendance', data),
   getAttendance: (internshipId: string) => apiClient.get(`/attendance/${internshipId}`),
   getAttendanceStats: (internshipId: string) => apiClient.get(`/attendance/${internshipId}/stats`),
+  getBatchAttendance: (facultyId?: string, threshold: number = 75.0) =>
+    apiClient.get('/attendance/batch/overview', { params: { facultyId, threshold } }),
 
   // Daily Logs
   createDailyLog: (data: any) => apiClient.post('/daily-logs', data),
@@ -119,8 +136,13 @@ export const api = {
   getCertificates: () => apiClient.get('/certificates'),
   generateCertificate: (internshipId: string, force: boolean = false) =>
     apiClient.post(`/certificates/${internshipId}/generate`, { force }),
+  facultyApproveCertificate: (internshipId: string) =>
+    apiClient.patch(`/certificates/${internshipId}/faculty-approve`),
+  adminApproveCertificate: (internshipId: string) =>
+    apiClient.patch(`/certificates/${internshipId}/admin-approve`),
   getCertificate: (internshipId: string) => apiClient.get(`/certificates/${internshipId}`),
   verifyCertificate: (code: string) => apiClient.get(`/certificates/verify/${code}`),
+  getPlacementReadiness: (id: string) => apiClient.get(`/students/${id}/placement-readiness`),
 
   // PPO
   createPPO: (data: any) => apiClient.post('/ppo', data),
@@ -148,23 +170,32 @@ export const api = {
   getCompanyAnalytics: (id: string) => apiClient.get(`/analytics/company/${id}`),
 
   // Notifications
-  getMyNotifications: () => apiClient.get('/notifications'),
-  getNotifications: (userId: string) => apiClient.get(`/notifications/${userId}`),
+  getMyNotifications: (params?: any) => apiClient.get('/notifications', { params }),
+  getNotifications: (userId: string, params?: any) => apiClient.get(`/notifications/${userId}`, { params }),
+  getUnreadNotificationCount: () => apiClient.get('/notifications/unread-count'),
+  getNotificationPreferences: () => apiClient.get('/notifications/preferences'),
+  updateNotificationPreferences: (data: any) => apiClient.patch('/notifications/preferences', data),
   markRead: (id: string) => apiClient.patch(`/notifications/${id}/read`),
   markAllRead: (userId?: string) =>
     userId ? apiClient.patch(`/notifications/${userId}/read-all`) : apiClient.patch('/notifications/read-all'),
+  deleteNotification: (id: string) => apiClient.delete(`/notifications/${id}`),
 
   // AI Innovation
   matchInternships: (studentId?: string) =>
     studentId ? apiClient.get(`/ai/match-internships/${studentId}`) : apiClient.get('/ai/match-internships'),
-  analyzeSkillGap: (studentId?: string) =>
-    studentId ? apiClient.get(`/ai/skill-gap/${studentId}`) : apiClient.get('/ai/skill-gap'),
+  analyzeSkillGap: (studentId?: string, listingId?: string) =>
+    studentId
+      ? apiClient.get(`/ai/skill-gap/${studentId}`, { params: { listingId } })
+      : apiClient.get('/ai/skill-gap', { params: { listingId } }),
+  aiChat: (message: string, history?: any[]) => apiClient.post('/ai/chat', { message, history }),
+  getAiProviderInfo: () => apiClient.get('/ai/provider-info'),
   reviewResume: (resumeText: string) => apiClient.post('/ai/review-resume', { resumeText }),
   summarizeReport: (report: any) => apiClient.post('/ai/summarize-report', { report }),
   placementInsights: (data: any) => apiClient.post('/ai/placement-insights', data),
 
   // Audit Logs
   getAuditLogs: (params?: any) => apiClient.get('/audit', { params }),
+  exportAuditLogsCsv: (params?: any) => apiClient.get('/audit/export', { params }),
 
   // Reports & CSV Export
   exportCsv: (type: string, params?: any) => apiClient.get(`/reports/export/${type}`, { params }),

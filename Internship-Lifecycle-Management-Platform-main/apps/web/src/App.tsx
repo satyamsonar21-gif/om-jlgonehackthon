@@ -1,74 +1,96 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './lib/auth';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { DashboardSkeleton } from './components/ui/LoadingState';
 
-import LandingPage from './pages/LandingPage';
-import SignInPage from './pages/SignInPage';
-import SignUpPage from './pages/SignUpPage';
-import VerifyCertificatePage from './pages/VerifyCertificatePage';
-
-// Login pages
-import StudentLoginPage from './pages/login/StudentLoginPage';
-import FacultyLoginPage from './pages/login/FacultyLoginPage';
-import CompanyLoginPage from './pages/login/CompanyLoginPage';
-import AdminLoginPage from './pages/login/AdminLoginPage';
-
+// Layout (synchronous for instant shell rendering)
 import DashboardLayout from './components/layout/DashboardLayout';
 
-// Student
-import StudentDashboardPage from './pages/student/StudentDashboardPage';
-import BrowseInternshipsPage from './pages/student/BrowseInternshipsPage';
-import InternshipDetailPage from './pages/student/InternshipDetailPage';
-import ApplicationsPage from './pages/student/ApplicationsPage';
-import ActiveInternshipPage from './pages/student/ActiveInternshipPage';
-import DailyLogsPage from './pages/student/DailyLogsPage';
-import WeeklyReportsPage from './pages/student/WeeklyReportsPage';
-import AttendancePage from './pages/student/AttendancePage';
-import TasksPage from './pages/student/TasksPage';
-import FeedbackPage from './pages/student/FeedbackPage';
-import PlacementScorePage from './pages/student/PlacementScorePage';
-import CertificatesPage from './pages/student/CertificatesPage';
-import ProfilePage from './pages/student/ProfilePage';
+// Public & Auth Pages (Lazy loaded)
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const SignInPage = lazy(() => import('./pages/SignInPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
+const AccountRecoveryPage = lazy(() => import('./pages/AccountRecoveryPage'));
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
+const SessionExpiredPage = lazy(() => import('./pages/SessionExpiredPage'));
+const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
+const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
+const AccountSuspendedPage = lazy(() => import('./pages/AccountSuspendedPage'));
+const VerifyCertificatePage = lazy(() => import('./pages/VerifyCertificatePage'));
 
-// Faculty
-import FacultyDashboardPage from './pages/faculty/FacultyDashboardPage';
-import FacultyStudentsPage from './pages/faculty/FacultyStudentsPage';
-import FacultyStudentDetailPage from './pages/faculty/FacultyStudentDetailPage';
-import FacultyReportsPage from './pages/faculty/FacultyReportsPage';
-import FacultyAnalyticsPage from './pages/faculty/FacultyAnalyticsPage';
-import FacultyProfilePage from './pages/faculty/FacultyProfilePage';
+// Dedicated Login Pages (Lazy loaded)
+const StudentLoginPage = lazy(() => import('./pages/login/StudentLoginPage'));
+const FacultyLoginPage = lazy(() => import('./pages/login/FacultyLoginPage'));
+const CompanyLoginPage = lazy(() => import('./pages/login/CompanyLoginPage'));
+const AdminLoginPage = lazy(() => import('./pages/login/AdminLoginPage'));
 
-// Company
-import CompanyDashboardPage from './pages/company/CompanyDashboardPage';
-import CompanyListingsPage from './pages/company/CompanyListingsPage';
-import NewListingPage from './pages/company/NewListingPage';
-import CompanyApplicationsPage from './pages/company/CompanyApplicationsPage';
-import CompanyInternsPage from './pages/company/CompanyInternsPage';
-import CompanyInternDetailPage from './pages/company/CompanyInternDetailPage';
-import CompanyProfilePage from './pages/company/CompanyProfilePage';
+// Student Portal (Lazy loaded)
+const StudentDashboardPage = lazy(() => import('./pages/student/StudentDashboardPage'));
+const BrowseInternshipsPage = lazy(() => import('./pages/student/BrowseInternshipsPage'));
+const InternshipDetailPage = lazy(() => import('./pages/student/InternshipDetailPage'));
+const ApplicationsPage = lazy(() => import('./pages/student/ApplicationsPage'));
+const ActiveInternshipPage = lazy(() => import('./pages/student/ActiveInternshipPage'));
+const DailyLogsPage = lazy(() => import('./pages/student/DailyLogsPage'));
+const WeeklyReportsPage = lazy(() => import('./pages/student/WeeklyReportsPage'));
+const AttendancePage = lazy(() => import('./pages/student/AttendancePage'));
+const TasksPage = lazy(() => import('./pages/student/TasksPage'));
+const FeedbackPage = lazy(() => import('./pages/student/FeedbackPage'));
+const PlacementScorePage = lazy(() => import('./pages/student/PlacementScorePage'));
+const CertificatesPage = lazy(() => import('./pages/student/CertificatesPage'));
+const ProfilePage = lazy(() => import('./pages/student/ProfilePage'));
 
-// Admin
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminStudentsPage from './pages/admin/AdminStudentsPage';
-import AdminFacultyPage from './pages/admin/AdminFacultyPage';
-import AdminCompaniesPage from './pages/admin/AdminCompaniesPage';
-import AdminInternshipsPage from './pages/admin/AdminInternshipsPage';
-import AdminCertificatesPage from './pages/admin/AdminCertificatesPage';
-import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
-import AdminSettingsPage from './pages/admin/AdminSettingsPage';
-import AdminProfilePage from './pages/admin/AdminProfilePage';
+// Faculty Portal (Lazy loaded)
+const FacultyDashboardPage = lazy(() => import('./pages/faculty/FacultyDashboardPage'));
+const FacultyStudentsPage = lazy(() => import('./pages/faculty/FacultyStudentsPage'));
+const FacultyStudentDetailPage = lazy(() => import('./pages/faculty/FacultyStudentDetailPage'));
+const FacultyApplicationsPage = lazy(() => import('./pages/faculty/FacultyApplicationsPage'));
+const FacultyReportsPage = lazy(() => import('./pages/faculty/FacultyReportsPage'));
+const FacultyAnalyticsPage = lazy(() => import('./pages/faculty/FacultyAnalyticsPage'));
+const FacultyProfilePage = lazy(() => import('./pages/faculty/FacultyProfilePage'));
 
+// Company Portal (Lazy loaded)
+const CompanyDashboardPage = lazy(() => import('./pages/company/CompanyDashboardPage'));
+const CompanyListingsPage = lazy(() => import('./pages/company/CompanyListingsPage'));
+const NewListingPage = lazy(() => import('./pages/company/NewListingPage'));
+const CompanyApplicationsPage = lazy(() => import('./pages/company/CompanyApplicationsPage'));
+const CompanyInternsPage = lazy(() => import('./pages/company/CompanyInternsPage'));
+const CompanyInternDetailPage = lazy(() => import('./pages/company/CompanyInternDetailPage'));
+const CompanyProfilePage = lazy(() => import('./pages/company/CompanyProfilePage'));
+
+// Admin Portal (Lazy loaded)
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminStudentsPage = lazy(() => import('./pages/admin/AdminStudentsPage'));
+const AdminFacultyPage = lazy(() => import('./pages/admin/AdminFacultyPage'));
+const AdminCompaniesPage = lazy(() => import('./pages/admin/AdminCompaniesPage'));
+const AdminInternshipsPage = lazy(() => import('./pages/admin/AdminInternshipsPage'));
+const AdminCertificatesPage = lazy(() => import('./pages/admin/AdminCertificatesPage'));
+const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage'));
+const AdminAuditLogPage = lazy(() => import('./pages/admin/AdminAuditLogPage'));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'));
+const AdminProfilePage = lazy(() => import('./pages/admin/AdminProfilePage'));
+
+// High-Performance QueryClient configuration
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 60 * 1000, // 1 minute
+      gcTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false,
-      staleTime: 30000,
+      refetchOnReconnect: true,
       retry: 1,
     },
   },
 });
+
+function SuspenseFallback() {
+  return <DashboardSkeleton />;
+}
 
 export default function App() {
   return (
@@ -76,63 +98,89 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Toaster position="top-right" richColors closeButton />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/sign-in" element={<SignInPage />} />
-            <Route path="/sign-in/student" element={<StudentLoginPage />} />
-            <Route path="/sign-in/faculty" element={<FacultyLoginPage />} />
-            <Route path="/sign-in/company" element={<CompanyLoginPage />} />
-            <Route path="/sign-in/admin" element={<AdminLoginPage />} />
-            <Route path="/sign-up/*" element={<SignUpPage />} />
-            <Route path="/verify/:code" element={<VerifyCertificatePage />} />
-            
-            <Route element={<DashboardLayout />}>
-              {/* Student */}
-              <Route path="/student" element={<StudentDashboardPage />} />
-              <Route path="/student/internships" element={<BrowseInternshipsPage />} />
-              <Route path="/student/internships/:id" element={<InternshipDetailPage />} />
-              <Route path="/student/applications" element={<ApplicationsPage />} />
-              <Route path="/student/active" element={<ActiveInternshipPage />} />
-              <Route path="/student/active/logs" element={<DailyLogsPage />} />
-              <Route path="/student/active/reports" element={<WeeklyReportsPage />} />
-              <Route path="/student/active/attendance" element={<AttendancePage />} />
-              <Route path="/student/active/tasks" element={<TasksPage />} />
-              <Route path="/student/active/feedback" element={<FeedbackPage />} />
-              <Route path="/student/placement" element={<PlacementScorePage />} />
-              <Route path="/student/certificates" element={<CertificatesPage />} />
-              <Route path="/student/profile" element={<ProfilePage />} />
-              
-              {/* Faculty */}
-              <Route path="/faculty" element={<FacultyDashboardPage />} />
-              <Route path="/faculty/students" element={<FacultyStudentsPage />} />
-              <Route path="/faculty/students/:id" element={<FacultyStudentDetailPage />} />
-              <Route path="/faculty/reports" element={<FacultyReportsPage />} />
-              <Route path="/faculty/analytics" element={<FacultyAnalyticsPage />} />
-              <Route path="/faculty/profile" element={<FacultyProfilePage />} />
-              
-              {/* Company */}
-              <Route path="/company" element={<CompanyDashboardPage />} />
-              <Route path="/company/listings" element={<CompanyListingsPage />} />
-              <Route path="/company/listings/new" element={<NewListingPage />} />
-              <Route path="/company/applications" element={<CompanyApplicationsPage />} />
-              <Route path="/company/interns" element={<CompanyInternsPage />} />
-              <Route path="/company/interns/:id" element={<CompanyInternDetailPage />} />
-              <Route path="/company/profile" element={<CompanyProfilePage />} />
-              
-              {/* Admin */}
-              <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/admin/students" element={<AdminStudentsPage />} />
-              <Route path="/admin/faculty" element={<AdminFacultyPage />} />
-              <Route path="/admin/companies" element={<AdminCompaniesPage />} />
-              <Route path="/admin/internships" element={<AdminInternshipsPage />} />
-              <Route path="/admin/certificates" element={<AdminCertificatesPage />} />
-              <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
-              <Route path="/admin/settings" element={<AdminSettingsPage />} />
-              <Route path="/admin/profile" element={<AdminProfilePage />} />
-            </Route>
-            
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<SuspenseFallback />}>
+            <Routes>
+              {/* Public Authentication & Recovery Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/sign-in" element={<SignInPage />} />
+              <Route path="/sign-in/student" element={<StudentLoginPage />} />
+              <Route path="/sign-in/faculty" element={<FacultyLoginPage />} />
+              <Route path="/sign-in/company" element={<CompanyLoginPage />} />
+              <Route path="/sign-in/admin" element={<AdminLoginPage />} />
+              <Route path="/sign-up" element={<SignUpPage />} />
+              <Route path="/sign-up/*" element={<SignUpPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/account-recovery" element={<AccountRecoveryPage />} />
+              <Route path="/change-password" element={<ChangePasswordPage />} />
+              <Route path="/session-expired" element={<SessionExpiredPage />} />
+              <Route path="/unauthorized" element={<UnauthorizedPage />} />
+              <Route path="/pending-approval" element={<PendingApprovalPage />} />
+              <Route path="/account-suspended" element={<AccountSuspendedPage />} />
+              <Route path="/verify/:certificateNumber" element={<VerifyCertificatePage />} />
+
+              {/* Authenticated Dashboard Core Layout */}
+              <Route element={<DashboardLayout />}>
+                {/* Student Portal (Role Guard: STUDENT) */}
+                <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
+                  <Route path="/student" element={<StudentDashboardPage />} />
+                  <Route path="/student/internships" element={<BrowseInternshipsPage />} />
+                  <Route path="/student/internships/:id" element={<InternshipDetailPage />} />
+                  <Route path="/student/applications" element={<ApplicationsPage />} />
+                  <Route path="/student/active" element={<ActiveInternshipPage />} />
+                  <Route path="/student/active/logs" element={<DailyLogsPage />} />
+                  <Route path="/student/active/reports" element={<WeeklyReportsPage />} />
+                  <Route path="/student/active/attendance" element={<AttendancePage />} />
+                  <Route path="/student/active/tasks" element={<TasksPage />} />
+                  <Route path="/student/active/feedback" element={<FeedbackPage />} />
+                  <Route path="/student/placement-score" element={<PlacementScorePage />} />
+                  <Route path="/student/certificates" element={<CertificatesPage />} />
+                  <Route path="/student/profile" element={<ProfilePage />} />
+                </Route>
+
+                {/* Faculty Portal (Role Guard: FACULTY / FACULTY_MENTOR) */}
+                <Route element={<ProtectedRoute allowedRoles={['FACULTY', 'FACULTY_MENTOR']} />}>
+                  <Route path="/faculty" element={<FacultyDashboardPage />} />
+                  <Route path="/faculty/students" element={<FacultyStudentsPage />} />
+                  <Route path="/faculty/students/:id" element={<FacultyStudentDetailPage />} />
+                  <Route path="/faculty/applications" element={<FacultyApplicationsPage />} />
+                  <Route path="/faculty/reports" element={<FacultyReportsPage />} />
+                  <Route path="/faculty/analytics" element={<FacultyAnalyticsPage />} />
+                  <Route path="/faculty/profile" element={<FacultyProfilePage />} />
+                </Route>
+
+                {/* Company Portal (Role Guard: COMPANY / COMPANY_MENTOR) */}
+                <Route element={<ProtectedRoute allowedRoles={['COMPANY', 'COMPANY_MENTOR']} />}>
+                  <Route path="/company" element={<CompanyDashboardPage />} />
+                  <Route path="/company/listings" element={<CompanyListingsPage />} />
+                  <Route path="/company/listings/new" element={<NewListingPage />} />
+                  <Route path="/company/applications" element={<CompanyApplicationsPage />} />
+                  <Route path="/company/interns" element={<CompanyInternsPage />} />
+                  <Route path="/company/interns/:id" element={<CompanyInternDetailPage />} />
+                  <Route path="/company/profile" element={<CompanyProfilePage />} />
+                </Route>
+
+                {/* Admin Portal (Role Guard: ADMIN / TNP_ADMIN / HOD_ADMIN / SUPER_ADMIN) */}
+                <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'TNP_ADMIN', 'HOD_ADMIN', 'SUPER_ADMIN']} />}>
+                  <Route path="/admin" element={<AdminDashboardPage />} />
+                  <Route path="/admin/students" element={<AdminStudentsPage />} />
+                  <Route path="/admin/faculty" element={<AdminFacultyPage />} />
+                  <Route path="/admin/companies" element={<AdminCompaniesPage />} />
+                  <Route path="/admin/internships" element={<AdminInternshipsPage />} />
+                  <Route path="/admin/certificates" element={<AdminCertificatesPage />} />
+                  <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                  <Route path="/admin/audit-logs" element={<AdminAuditLogPage />} />
+                  <Route path="/admin/audit" element={<AdminAuditLogPage />} />
+                  <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                  <Route path="/admin/profile" element={<AdminProfilePage />} />
+                </Route>
+              </Route>
+
+              {/* Fallback Catch-All */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

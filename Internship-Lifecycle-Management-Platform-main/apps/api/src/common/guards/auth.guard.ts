@@ -3,11 +3,15 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
+  ForbiddenException,
   SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { verifyToken } from '@clerk/backend';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as crypto from 'crypto';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'ilmp_production_secure_jwt_secret_2026';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
@@ -18,6 +22,30 @@ export class AuthGuard implements CanActivate {
     private readonly prisma: PrismaService,
     private readonly reflector: Reflector,
   ) {}
+
+  private verifyCustomJwt(token: string): { sub: string; email: string; role: string; exp: number } | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+
+      const expectedSignature = crypto
+        .createHmac('sha256', JWT_SECRET)
+        .update(`${parts[0]}.${parts[1]}`)
+        .digest('base64url');
+
+      if (expectedSignature !== parts[2]) return null;
+
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+        throw new UnauthorizedException('Session expired. Please sign in again.');
+      }
+
+      return payload;
+    } catch (err: any) {
+      if (err instanceof UnauthorizedException) throw err;
+      return null;
+    }
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -32,8 +60,70 @@ export class AuthGuard implements CanActivate {
 
     let user = null;
 
-    // 1. Direct Demo User Header ID
-    if (demoUserId) {
+    // 1. Bearer Token Check (Standard JWT or Demo Token)
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+
+      // A. Custom Signed JWT
+      const jwtPayload = this.verifyCustomJwt(token);
+      if (jwtPayload && jwtPayload.sub) {
+        user = await this.prisma.user.findFirst({
+          where: {
+            OR: [{ id: jwtPayload.sub }, { email: jwtPayload.email }],
+          },
+          include: {
+            student: { include: { college: true } },
+            faculty: { include: { college: true } },
+            companyMentor: { include: { company: true } },
+          },
+        });
+      }
+
+      // B. Custom Demo Token (e.g. demo_student, demo_faculty)
+      if (!user && token.startsWith('demo_')) {
+        const roleFromToken = token.replace('demo_', '').toUpperCase();
+        user = await this.prisma.user.findFirst({
+          where: {
+            role: {
+              in: [
+                roleFromToken,
+                roleFromToken === 'COMPANY' ? 'COMPANY_MENTOR' : roleFromToken,
+                roleFromToken === 'FACULTY' ? 'FACULTY_MENTOR' : roleFromToken,
+              ],
+            },
+          },
+          include: {
+            student: { include: { college: true } },
+            faculty: { include: { college: true } },
+            companyMentor: { include: { company: true } },
+          },
+        });
+      }
+
+      // C. Clerk Verification Fallback
+      if (!user && process.env.CLERK_SECRET_KEY) {
+        try {
+          const payload = await verifyToken(token, {
+            secretKey: process.env.CLERK_SECRET_KEY,
+          });
+          if (payload && payload.sub) {
+            user = await this.prisma.user.findUnique({
+              where: { clerkId: payload.sub },
+              include: {
+                student: { include: { college: true } },
+                faculty: { include: { college: true } },
+                companyMentor: { include: { company: true } },
+              },
+            });
+          }
+        } catch {
+          // Ignore clerk error if handled by other fallbacks
+        }
+      }
+    }
+
+    // 2. Direct Demo User Header ID
+    if (!user && demoUserId) {
       user = await this.prisma.user.findUnique({
         where: { id: demoUserId },
         include: {
@@ -44,7 +134,7 @@ export class AuthGuard implements CanActivate {
       });
     }
 
-    // 2. Demo Role header fallback
+    // 3. Demo Role Header Fallback
     if (!user && demoRole) {
       const normalizedRole = demoRole.toUpperCase();
       user = await this.prisma.user.findFirst({
@@ -65,53 +155,8 @@ export class AuthGuard implements CanActivate {
       });
     }
 
-    // 3. Bearer Token
-    if (!user && authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-
-      // Check if token is custom demo token
-      try {
-        if (token.startsWith('demo_')) {
-          const roleFromToken = token.replace('demo_', '').toUpperCase();
-          user = await this.prisma.user.findFirst({
-            where: {
-              role: {
-                in: [
-                  roleFromToken,
-                  roleFromToken === 'COMPANY' ? 'COMPANY_MENTOR' : roleFromToken,
-                  roleFromToken === 'FACULTY' ? 'FACULTY_MENTOR' : roleFromToken,
-                ],
-              },
-            },
-            include: {
-              student: { include: { college: true } },
-              faculty: { include: { college: true } },
-              companyMentor: { include: { company: true } },
-            },
-          });
-        } else if (process.env.CLERK_SECRET_KEY) {
-          const payload = await verifyToken(token, {
-            secretKey: process.env.CLERK_SECRET_KEY,
-          });
-          if (payload && payload.sub) {
-            user = await this.prisma.user.findUnique({
-              where: { clerkId: payload.sub },
-              include: {
-                student: { include: { college: true } },
-                faculty: { include: { college: true } },
-                companyMentor: { include: { company: true } },
-              },
-            });
-          }
-        }
-      } catch (err) {
-        // Fallback or ignore clerk verification error if public
-      }
-    }
-
     // 4. Default Demo fallback for local development & jury presentation
     if (!user && !isPublic) {
-      // Default to student if no token provided in development mode
       user = await this.prisma.user.findFirst({
         where: { email: 'aarav.patil@ghrce.edu' },
         include: {
@@ -123,10 +168,13 @@ export class AuthGuard implements CanActivate {
     }
 
     if (!user && !isPublic) {
-      throw new UnauthorizedException('Authentication required');
+      throw new UnauthorizedException('Authentication required. Please sign in.');
     }
 
     if (user) {
+      if (user.status === 'SUSPENDED') {
+        throw new ForbiddenException('Account has been suspended by the administrator.');
+      }
       request.user = user;
       request.clerkUserId = user.clerkId;
     }

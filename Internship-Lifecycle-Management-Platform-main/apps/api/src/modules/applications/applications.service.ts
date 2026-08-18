@@ -64,7 +64,7 @@ export class ApplicationsService {
       );
     }
 
-    // 5. Create Application with Status History
+    // 5. Create Application with Initial Status APPLIED / FACULTY_REVIEW
     const application = await this.prisma.application.create({
       data: {
         studentId: data.studentId,
@@ -72,14 +72,14 @@ export class ApplicationsService {
         coverLetter: data.coverLetter,
         resumeUrl: data.resumeUrl || student.resumeUrl,
         eligibilitySnapshot: JSON.stringify(eligibilityResult),
-        status: 'SUBMITTED',
+        status: 'APPLIED',
         statusHistory: {
           create: {
             fromStatus: null,
-            toStatus: 'SUBMITTED',
+            toStatus: 'APPLIED',
             changedById: student.userId,
             changedByRole: 'STUDENT',
-            reason: 'Student submitted formal application.',
+            reason: 'Student submitted application dossier.',
           },
         },
       },
@@ -109,7 +109,7 @@ export class ApplicationsService {
         entityId: application.id,
         userRole: 'STUDENT',
         userId: student.userId,
-        newState: 'SUBMITTED',
+        newState: 'APPLIED',
         reason: `Applied to ${listing.title} at ${listing.company.name}`,
       },
     });
@@ -122,7 +122,14 @@ export class ApplicationsService {
     if (query.studentId) where.studentId = query.studentId;
     if (query.listingId) where.listingId = query.listingId;
     if (query.companyId) where.listing = { companyId: query.companyId };
-    if (query.status) where.status = query.status;
+    if (query.department) where.student = { department: { contains: query.department } };
+    if (query.status) {
+      if (query.status === 'ACTIVE_PIPELINE') {
+        where.status = { notIn: ['REJECTED', 'WITHDRAWN', 'CLOSED'] };
+      } else {
+        where.status = query.status;
+      }
+    }
 
     return this.prisma.application.findMany({
       where,
@@ -174,6 +181,8 @@ export class ApplicationsService {
     body: {
       status: string;
       remarks?: string;
+      rejectionReason?: string;
+      interviewDate?: string;
       changedById?: string;
       changedByRole?: string;
       stipend?: number;
@@ -197,15 +206,37 @@ export class ApplicationsService {
     const previousStatus = app.status;
     const targetStatus = body.status;
 
+    // Strict validation: Reject MUST have a reason
+    if (targetStatus === 'REJECTED') {
+      const reason = body.rejectionReason || body.remarks;
+      if (!reason || reason.trim().length === 0) {
+        throw new BadRequestException('A formal rejection reason is mandatory when declining an application.');
+      }
+    }
+
     // Build update object
     const updateData: any = { status: targetStatus };
-    if (body.remarks) updateData.companyRemarks = body.remarks;
+    if (body.remarks) {
+      if (body.changedByRole === 'FACULTY' || body.changedByRole === 'FACULTY_MENTOR') {
+        updateData.facultyRemarks = body.remarks;
+      } else {
+        updateData.companyRemarks = body.remarks;
+      }
+    }
 
+    if (body.interviewDate) {
+      updateData.interviewDate = new Date(body.interviewDate);
+    }
+
+    if (targetStatus === 'FACULTY_APPROVED') {
+      updateData.facultyApprovedAt = new Date();
+      if (body.remarks) updateData.facultyRemarks = body.remarks;
+    }
     if (targetStatus === 'SHORTLISTED') updateData.shortlistedAt = new Date();
     if (targetStatus === 'SELECTED') updateData.selectedAt = new Date();
     if (targetStatus === 'REJECTED') {
       updateData.rejectedAt = new Date();
-      updateData.rejectionReason = body.remarks || 'Application rejected during review';
+      updateData.rejectionReason = body.rejectionReason || body.remarks;
     }
 
     const updated = await this.prisma.application.update({
@@ -225,7 +256,7 @@ export class ApplicationsService {
         toStatus: targetStatus,
         changedById: body.changedById,
         changedByRole: body.changedByRole || 'COMPANY_MENTOR',
-        reason: body.remarks || `Application status transitioned to ${targetStatus}`,
+        reason: body.rejectionReason || body.remarks || `Status transitioned to ${targetStatus}`,
       },
     });
 
@@ -272,48 +303,8 @@ export class ApplicationsService {
       });
     }
 
-    // 3. Handle Offer Acceptance by Student
-    if (targetStatus === 'OFFER_ACCEPTED') {
-      await this.prisma.offerLetter.updateMany({
-        where: { applicationId: id },
-        data: {
-          status: 'ACCEPTED',
-          respondedAt: new Date(),
-          studentRemarks: body.remarks || 'Accepted by student on portal',
-        },
-      });
-
-      // Move to TNP_VERIFICATION_PENDING
-      await this.prisma.tNPVerification.upsert({
-        where: { applicationId: id },
-        update: { status: 'PENDING' },
-        create: {
-          applicationId: id,
-          status: 'PENDING',
-          remarks: 'Awaiting T&P approval of accepted corporate offer',
-        },
-      });
-
-      // Update status to TNP_VERIFICATION_PENDING
-      await this.prisma.application.update({
-        where: { id },
-        data: { status: 'TNP_VERIFICATION_PENDING' },
-      });
-    }
-
-    // 4. Handle T&P Verification Approval
-    if (targetStatus === 'TNP_VERIFIED') {
-      await this.prisma.tNPVerification.updateMany({
-        where: { applicationId: id },
-        data: {
-          status: 'VERIFIED',
-          verifiedAt: new Date(),
-          verifiedById: body.changedById,
-          remarks: body.remarks || 'Offer verified and approved by T&P cell',
-        },
-      });
-
-      // Auto-assign faculty or create Internship record
+    // 3. Handle Active Internship Initiation
+    if (targetStatus === 'INTERNSHIP_ACTIVE' || targetStatus === 'JOINED' || targetStatus === 'TNP_VERIFIED') {
       const defaultFaculty = await this.prisma.faculty.findFirst({
         where: { department: app.student.department },
       }) || await this.prisma.faculty.findFirst();
@@ -349,27 +340,48 @@ export class ApplicationsService {
             placementReadinessScore: app.student.placementReadinessScore || 85.0,
           },
         });
-
-        // Faculty Student Assignment
-        await this.prisma.facultyStudentAssignment.upsert({
-          where: {
-            facultyId_studentId: {
-              facultyId: facultyMentorId,
-              studentId: app.studentId,
-            },
-          },
-          update: { status: 'ACTIVE' },
-          create: {
-            facultyId: facultyMentorId,
-            studentId: app.studentId,
-            assignedBy: body.changedById,
-            status: 'ACTIVE',
-          },
-        });
       }
     }
 
-    // Audit Log
+    // 4. Notify Stakeholders on Critical Transitions
+    let notifTitle = `Application Status: ${targetStatus}`;
+    let notifMsg = `Your application for '${app.listing.title}' was updated to ${targetStatus}.`;
+    let notifType: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR' = 'INFO';
+
+    if (targetStatus === 'FACULTY_APPROVED') {
+      notifTitle = 'Faculty Approval Granted ✅';
+      notifMsg = `Faculty has approved your academic eligibility for '${app.listing.title}'. Now under corporate review.`;
+      notifType = 'SUCCESS';
+    } else if (targetStatus === 'SHORTLISTED') {
+      notifTitle = 'Application Shortlisted 🌟';
+      notifMsg = `${app.listing.company.name} has shortlisted your profile for '${app.listing.title}'.`;
+      notifType = 'SUCCESS';
+    } else if (targetStatus === 'INTERVIEW') {
+      notifTitle = 'Interview Stage 📞';
+      notifMsg = `${app.listing.company.name} has moved your application for '${app.listing.title}' to the Interview stage.`;
+      notifType = 'SUCCESS';
+    } else if (targetStatus === 'SELECTED') {
+      notifTitle = 'Selected for Internship! 🏆';
+      notifMsg = `You have been selected by ${app.listing.company.name} for '${app.listing.title}'.`;
+      notifType = 'SUCCESS';
+    } else if (targetStatus === 'REJECTED') {
+      notifTitle = 'Application Update';
+      notifMsg = `Application for '${app.listing.title}' was not selected: ${body.rejectionReason || body.remarks || 'Position filled'}.`;
+      notifType = 'ERROR';
+    }
+
+    await this.prisma.notification.create({
+      data: {
+        userId: app.student.userId,
+        role: 'STUDENT',
+        title: notifTitle,
+        message: notifMsg,
+        type: notifType,
+        link: '/student/applications',
+      },
+    });
+
+    // 5. Audit Log
     await this.prisma.auditLog.create({
       data: {
         action: `APPLICATION_${targetStatus}`,
@@ -379,7 +391,7 @@ export class ApplicationsService {
         userId: body.changedById,
         previousState: previousStatus,
         newState: targetStatus,
-        reason: body.remarks || `Status transitioned to ${targetStatus}`,
+        reason: body.rejectionReason || body.remarks || `Status transitioned to ${targetStatus}`,
       },
     });
 

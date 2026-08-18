@@ -72,6 +72,8 @@ export const ConstellationCanvas: React.FC<ConstellationProps> = ({
       radius: s.status === "intervention" ? 8 : s.status === "attention" ? 6 : 5,
     }));
 
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
@@ -95,12 +97,14 @@ export const ConstellationCanvas: React.FC<ConstellationProps> = ({
 
       // Update and draw nodes
       nodes.forEach((node) => {
-        node.x += node.vx;
-        node.y += node.vy;
+        if (!prefersReducedMotion) {
+          node.x += node.vx;
+          node.y += node.vy;
 
-        // Bounce on edges
-        if (node.x < 20 || node.x > width - 20) node.vx *= -1;
-        if (node.y < 20 || node.y > height - 20) node.vy *= -1;
+          // Bounce on edges
+          if (node.x < 20 || node.x > width - 20) node.vx *= -1;
+          if (node.y < 20 || node.y > height - 20) node.vy *= -1;
+        }
 
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
@@ -109,7 +113,7 @@ export const ConstellationCanvas: React.FC<ConstellationProps> = ({
         if (node.status === "intervention") {
           ctx.fillStyle = "#ef4444"; // red-500
           ctx.shadowColor = "rgba(239, 68, 68, 0.4)";
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 4;
         } else if (node.status === "attention") {
           ctx.fillStyle = "#f59e0b"; // amber-500
           ctx.shadowBlur = 0;
@@ -121,12 +125,27 @@ export const ConstellationCanvas: React.FC<ConstellationProps> = ({
         ctx.fill();
       });
 
-      animationFrameId = requestAnimationFrame(render);
+      if (!prefersReducedMotion && document.visibilityState === 'visible') {
+        animationFrameId = requestAnimationFrame(render);
+      }
     };
 
     render();
 
-    return () => cancelAnimationFrame(animationFrameId);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !prefersReducedMotion) {
+        animationFrameId = requestAnimationFrame(render);
+      } else {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [students, viewMode]);
 
   return (

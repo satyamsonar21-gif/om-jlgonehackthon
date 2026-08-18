@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { WeeklyReportsService } from './weekly-reports.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Weekly Reports')
 @ApiBearerAuth()
@@ -28,8 +29,8 @@ export class WeeklyReportsController {
   @Get('pending')
   @Roles('FACULTY', 'FACULTY_MENTOR', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Get pending weekly reports in Faculty review queue' })
-  getPendingAll(@Request() req: any) {
-    const facultyId = req.user?.faculty?.id || req.user?.id;
+  getPendingAll(@CurrentUser() user: any) {
+    const facultyId = user?.faculty?.id || user?.id;
     return this.weeklyReportsService.getPending(facultyId);
   }
 
@@ -43,8 +44,9 @@ export class WeeklyReportsController {
   @Patch(':id/review')
   @Roles('FACULTY', 'FACULTY_MENTOR', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Faculty review and score weekly report (Approve, Revision Requested, Reject)' })
-  review(@Param('id') id: string, @Body() body: any, @Request() req: any) {
-    const reviewedById = req.user?.faculty?.id || req.user?.id;
+  review(@Param('id') id: string, @Body() body: any, @CurrentUser() user: any) {
+    const reviewedById = user?.faculty?.id || user?.id;
     return this.weeklyReportsService.review(id, { ...body, reviewedById });
   }
 }
+

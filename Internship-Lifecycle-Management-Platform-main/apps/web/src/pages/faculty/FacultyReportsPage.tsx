@@ -38,6 +38,10 @@ export default function FacultyReportsPage() {
 
   const handleReview = async (status: 'APPROVED' | 'REVISION_REQUESTED' | 'REJECTED') => {
     if (!evaluatingReport) return;
+    if (status === 'REVISION_REQUESTED' && !feedback.trim()) {
+      toast.error('Specific feedback comments are mandatory when requesting revisions.');
+      return;
+    }
     setActing(true);
     try {
       await api.reviewReport(evaluatingReport.id, {

@@ -18,4 +18,11 @@ export class AuditController {
   findAll(@Query() query: any) {
     return this.auditService.findAll(query);
   }
+
+  @Get('export')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN')
+  @ApiOperation({ summary: 'Export institutional audit log ledger as CSV (Admin only)' })
+  exportCsv(@Query() query: any) {
+    return this.auditService.exportCsv(query);
+  }
 }

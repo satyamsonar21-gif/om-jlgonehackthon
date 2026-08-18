@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AiService } from './ai.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -9,6 +9,12 @@ import { AuthGuard } from '../../common/guards/auth.guard';
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
+
+  @Get('provider-info')
+  @ApiOperation({ summary: 'Get current AI provider and fallback status' })
+  getProviderInfo() {
+    return this.aiService.getProviderInfo();
+  }
 
   @Get('match-internships')
   @ApiOperation({ summary: 'Get AI recommended internships for current student' })
@@ -25,15 +31,25 @@ export class AiController {
 
   @Get('skill-gap')
   @ApiOperation({ summary: 'Analyze technical skill gaps for current student' })
-  analyzeSkillGap(@Request() req: any) {
+  analyzeSkillGap(@Request() req: any, @Query('listingId') listingId?: string) {
     const studentId = req.user?.student?.id || req.user?.id;
-    return this.aiService.analyzeSkillGap(studentId);
+    return this.aiService.analyzeSkillGap(studentId, listingId);
   }
 
   @Get('skill-gap/:studentId')
   @ApiOperation({ summary: 'Analyze technical skill gaps for specific student' })
-  analyzeSkillGapForStudent(@Param('studentId') studentId: string) {
-    return this.aiService.analyzeSkillGap(studentId);
+  analyzeSkillGapForStudent(@Param('studentId') studentId: string, @Query('listingId') listingId?: string) {
+    return this.aiService.analyzeSkillGap(studentId, listingId);
+  }
+
+  @Post('chat')
+  @ApiOperation({ summary: 'Grounded AI Career Placement Assistant chat' })
+  chat(
+    @Request() req: any,
+    @Body() body: { message: string; history?: Array<{ role: 'user' | 'assistant'; content: string }> }
+  ) {
+    const studentId = req.user?.student?.id || req.user?.id;
+    return this.aiService.chat(studentId, body.message, body.history);
   }
 
   @Post('review-resume')

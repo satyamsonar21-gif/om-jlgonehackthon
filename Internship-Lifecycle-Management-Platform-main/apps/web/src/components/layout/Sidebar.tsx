@@ -19,6 +19,7 @@ import {
   Building2, 
   GraduationCap, 
   Shield,
+  UserCheck,
   PanelLeftClose,
   PanelLeftOpen,
   HelpCircle,
@@ -96,6 +97,7 @@ export function Sidebar({ role }: SidebarProps) {
               title: 'MAIN',
               items: [
                 { href: '/faculty', label: 'Dashboard', icon: Home },
+                { href: '/faculty/applications', label: 'Applications', icon: UserCheck },
                 { href: '/faculty/students', label: 'Students', icon: Users, badge: '42' },
                 { href: '/faculty/reports', label: 'Review Queue', icon: Inbox, badge: '4' },
                 { href: '/faculty/analytics', label: 'Analytics', icon: BarChart },
@@ -166,8 +168,9 @@ export function Sidebar({ role }: SidebarProps) {
               title: 'SYSTEM',
               items: [
                 { href: '/admin/analytics', label: 'Analytics', icon: BarChart },
+                { href: '/admin/audit-logs', label: 'Audit Ledger', icon: Shield },
                 { href: '/admin/settings', label: 'Settings', icon: Settings },
-                { href: '/admin/profile', label: 'Admin Profile', icon: Shield },
+                { href: '/admin/profile', label: 'Admin Profile', icon: User },
               ],
             },
           ],
