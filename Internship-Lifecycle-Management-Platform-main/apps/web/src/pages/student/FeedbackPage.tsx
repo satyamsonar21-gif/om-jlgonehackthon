@@ -1,83 +1,155 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import Header from '@/components/layout/Header';
-import { Star, MessageSquare, Building2, User, Award, Calendar, CheckCircle2 } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import { Header } from '@/components/layout/Header';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { StatCard } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { MessageSquare, Star, User, BookOpen, Building2, CheckCircle2 } from 'lucide-react';
 
-const feedbacks = [
+interface FeedbackRecord {
+  id: string;
+  source: 'Industry Supervisor' | 'Faculty Advisor';
+  author: string;
+  role: string;
+  date: string;
+  rating: number;
+  comments: string;
+  milestone: string;
+  strengths: string[];
+}
+
+const feedbackList: FeedbackRecord[] = [
   {
-    id: '1',
-    mentorName: 'Siddharth Nambiar',
-    mentorRole: 'Lead Architect & Engineering Manager',
-    company: 'TechCorp Solutions',
-    date: 'Jul 20, 2026',
-    ratings: { technicalSkills: 4.8, communication: 4.5, problemSolving: 4.8, punctuality: 5.0, teamwork: 4.9 },
-    overallScore: 4.8,
-    comments: 'Priya has shown remarkable mastery in backend API architecture and high-performance caching. She proactively completed the OAuth2 PKCE integration sprint ahead of schedule.',
+    id: 'f1',
+    source: 'Industry Supervisor',
+    author: 'Siddharth Nambiar',
+    role: 'Lead Architect · TechCorp Solutions',
+    date: 'Jul 24, 2026',
+    rating: 5,
+    milestone: 'Sprint 4 Architecture & OAuth2 Review',
+    comments: 'Priya demonstrated exceptional technical autonomy while architecting the OAuth2 PKCE flow. Her unit test coverage was thorough and she resolved integration edge cases swiftly.',
+    strengths: ['Go Microservices', 'Test Driven Development', 'System Diagramming'],
   },
   {
-    id: '2',
-    mentorName: 'Dr. Rajesh Kumar',
-    mentorRole: 'Academic Faculty Guide',
-    company: 'Dept. of Computer Science',
+    id: 'f2',
+    source: 'Faculty Advisor',
+    author: 'Dr. Rajesh Kumar',
+    role: 'Dept. of Computer Science & Engineering',
+    date: 'Jul 20, 2026',
+    rating: 4.8,
+    milestone: 'Week 3 Synthesis Report Evaluation',
+    comments: 'Strong documentation of relational database indexing and performance benchmarks. Good adherence to institutional reporting standards.',
+    strengths: ['Academic Rigor', 'Analytical Reporting'],
+  },
+  {
+    id: 'f3',
+    source: 'Industry Supervisor',
+    author: 'Siddharth Nambiar',
+    role: 'Lead Architect · TechCorp Solutions',
     date: 'Jul 10, 2026',
-    ratings: { technicalSkills: 4.6, communication: 4.7, problemSolving: 4.5, punctuality: 4.9, teamwork: 4.8 },
-    overallScore: 4.7,
-    comments: 'Consistently submits structured technical synthesis reports on time with exemplary documentation and reproducible code samples.',
+    rating: 4.5,
+    milestone: 'Sprint 2 Component Migration Evaluation',
+    comments: 'Smooth onboarding sprint. Priya integrated with the team repository rapidly and delivered early on her first sprint milestone.',
+    strengths: ['Team Collaboration', 'Git Workflow'],
   },
 ];
 
 export default function FeedbackPage() {
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+
   return (
-    <div className="min-h-full pb-16 text-slate-900">
-      <Header title="Supervisor & Faculty Feedback" subtitle="Formal evaluations from industry guides and academic advisors" />
-      
-      <main className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
-        {feedbacks.map((fb, i) => (
-          <motion.div 
-            key={fb.id} 
-            initial={{ opacity: 0, y: 12 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ delay: i * 0.08 }}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-teal-50 text-[#0D9488] border border-teal-200 flex items-center justify-center font-bold text-sm">
-                  <MessageSquare size={20} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900">{fb.mentorName}</h3>
-                  <p className="text-xs text-slate-500">{fb.mentorRole} · <span className="font-semibold text-slate-700">{fb.company}</span></p>
-                  <span className="text-[11px] font-mono text-slate-400 mt-0.5 block">{fb.date}</span>
-                </div>
-              </div>
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title="Mentor & Faculty Feedback"
+        subtitle="Formal academic appraisals and industry supervisor performance evaluations"
+        onOpenMobileNav={onOpenMobileNav}
+      />
 
-              <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
-                <Star size={16} className="text-amber-500 fill-amber-500" />
-                <span className="font-mono font-bold text-base text-slate-900">{fb.overallScore}</span>
-                <span className="text-xs text-slate-400 font-mono">/ 5.0</span>
-              </div>
-            </div>
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        {/* Rating Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard
+            label="Supervisor Rating"
+            value="4.9 / 5.0"
+            sublabel="TechCorp Solutions"
+            icon={Star}
+            iconColor="#4F46E5"
+          />
+          <StatCard
+            label="Faculty Grade"
+            value="4.8 / 5.0"
+            sublabel="Dept. of CSE"
+            icon={BookOpen}
+            iconColor="#059669"
+          />
+          <StatCard
+            label="Appraisals Received"
+            value="3 Formal"
+            sublabel="100% Verified Sign-offs"
+            icon={CheckCircle2}
+            iconColor="#16A34A"
+          />
+        </div>
 
-            {/* Ratings Breakdown */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {Object.entries(fb.ratings).map(([key, val]) => (
-                <div key={key} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-1">
-                    {key.replace(/([A-Z])/g, ' $1')}
+        {/* Feedback Timeline Cards */}
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-slate-900">Evaluation Dossier</h2>
+
+          <div className="space-y-4">
+            {feedbackList.map((item) => (
+              <Card key={item.id} className="p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                        item.source === 'Industry Supervisor'
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}
+                    >
+                      {item.source === 'Industry Supervisor' ? <Building2 size={20} /> : <BookOpen size={20} />}
+                    </div>
+
+                    <div>
+                      <div className="font-bold text-slate-900 text-sm">{item.author}</div>
+                      <div className="text-[11px] text-slate-500">{item.role}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 text-amber-500 font-mono font-bold text-xs">
+                      <Star size={14} className="fill-amber-400" />
+                      <span>{item.rating} / 5.0</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">· {item.date}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[11px] font-mono font-bold text-slate-500 uppercase">
+                    {item.milestone}
                   </span>
-                  <span className="text-xs font-mono font-bold text-[#0D9488]">{val} / 5</span>
+                  <p className="text-xs text-slate-700 leading-relaxed font-medium bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    "{item.comments}"
+                  </p>
                 </div>
-              ))}
-            </div>
 
-            {/* Comments Quote */}
-            <div className="p-4 rounded-xl bg-teal-50/50 border border-teal-200/60 text-xs text-slate-700 leading-relaxed italic">
-              "{fb.comments}"
-            </div>
-          </motion.div>
-        ))}
-      </main>
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-mono text-slate-400 font-semibold mr-1">Skills Highlighted:</span>
+                  {item.strengths.map((s) => (
+                    <span
+                      key={s}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-mono font-medium bg-white border border-slate-200 text-slate-700"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,121 +1,105 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import Header from '@/components/layout/Header';
-import { Building, Settings, Bell, Sparkles, AlertTriangle, Save, CheckCircle2, Shield, Key } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import { Header } from '@/components/layout/Header';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input, Select, Checkbox } from '@/components/ui/Input';
+import { Settings, Shield, Lock, Save, Database } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminSettingsPage() {
-  const [saved, setSaved] = useState(false);
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+
+  const [termName, setTermName] = useState('Academic Term Fall 2026');
+  const [minAttendance, setMinAttendance] = useState('75');
+  const [autoFlagAtRisk, setAutoFlagAtRisk] = useState(true);
+  const [requireFacultyNOC, setRequireFacultyNOC] = useState(true);
+  const [certKeyRotation, setCertKeyRotation] = useState('Annual');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    toast.success('Institutional compliance settings updated successfully!');
   };
 
   return (
-    <div className="min-h-full pb-16 text-slate-900">
-      <Header title="System & Institutional Settings" subtitle="Configure campus compliance criteria, API keys, and security parameters" />
-      
-      <main className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* Section 1: Institution Details */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Building size={18} className="text-[#BE123C]" />
-              <h3 className="font-bold text-sm text-slate-900">Institution Identity</h3>
-            </div>
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title="System Governance Settings"
+        subtitle="Configure institutional compliance rules, term parameters, and cryptographic keys"
+        onOpenMobileNav={onOpenMobileNav}
+      />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600">Institution Legal Name</label>
-                <input 
-                  type="text" 
-                  defaultValue="National Institute of Technology" 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 focus:outline-none input-focus-ring" 
-                  style={{ '--primary': '#BE123C' } as React.CSSProperties}
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <Card className="p-6 sm:p-8">
+          <form onSubmit={handleSave} className="space-y-6 text-xs">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
+                Academic Term Configuration
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Active Term Name"
+                  value={termName}
+                  onChange={(e) => setTermName(e.target.value)}
+                  required
                 />
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600">University Accreditation Code</label>
-                <input 
-                  type="text" 
-                  defaultValue="NIT-ACCRED-2026" 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 focus:outline-none input-focus-ring" 
-                  style={{ '--primary': '#BE123C' } as React.CSSProperties}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Academic Thresholds */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Settings size={18} className="text-[#BE123C]" />
-              <h3 className="font-bold text-sm text-slate-900">Compliance & At-Risk Thresholds</h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600">Min Required Attendance (%)</label>
-                <input 
-                  type="number" 
-                  defaultValue={75} 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 focus:outline-none input-focus-ring font-mono" 
-                  style={{ '--primary': '#BE123C' } as React.CSSProperties}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600">Weekly Report Grace Period (Days)</label>
-                <input 
-                  type="number" 
-                  defaultValue={3} 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 focus:outline-none input-focus-ring font-mono" 
-                  style={{ '--primary': '#BE123C' } as React.CSSProperties}
+                <Input
+                  label="Minimum Mandatory Attendance (%)"
+                  type="number"
+                  min="50"
+                  max="100"
+                  value={minAttendance}
+                  onChange={(e) => setMinAttendance(e.target.value)}
+                  required
                 />
               </div>
             </div>
-          </div>
 
-          {/* Section 3: Certificate Cryptography */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Key size={18} className="text-[#BE123C]" />
-              <h3 className="font-bold text-sm text-slate-900">Certificate Digital Signature Keys</h3>
-            </div>
+            <div className="space-y-3 pt-2">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
+                Automated Compliance Rules
+              </h3>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600">Public Verification Hash Key</label>
-              <input 
-                type="text" 
-                readOnly
-                defaultValue="ed25519_pk_7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069" 
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-500 font-mono focus:outline-none" 
+              <Checkbox
+                label="Automatically flag students on supervisor watchlist when attendance drops below threshold"
+                checked={autoFlagAtRisk}
+                onChange={(e) => setAutoFlagAtRisk(e.target.checked)}
+              />
+
+              <Checkbox
+                label="Require verified Faculty Guide NOC before issuing candidate selection letters"
+                checked={requireFacultyNOC}
+                onChange={(e) => setRequireFacultyNOC(e.target.checked)}
               />
             </div>
-          </div>
 
-          <div className="pt-2 flex justify-end">
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#BE123C] hover:bg-[#9F1239] text-white text-xs font-bold font-mono tracking-wider uppercase transition-all shadow-xs flex items-center gap-2 cursor-pointer"
-            >
-              {saved ? (
-                <>
-                  <CheckCircle2 size={14} />
-                  <span>Parameters Updated</span>
-                </>
-              ) : (
-                <>
-                  <Save size={14} />
-                  <span>Save Configuration</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </main>
+            <div className="space-y-4 pt-2">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
+                Cryptographic Key & Security
+              </h3>
+
+              <Select
+                label="Ed25519 Certificate Signing Key Rotation Schedule"
+                value={certKeyRotation}
+                onChange={(e) => setCertKeyRotation(e.target.value)}
+                options={[
+                  { label: 'Annual (Academic Year End)', value: 'Annual' },
+                  { label: 'Per Semester', value: 'Semester' },
+                  { label: 'Manual Key Rotation Only', value: 'Manual' },
+                ]}
+              />
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <Button type="submit" variant="primary" size="md" className="bg-sky-600 hover:bg-sky-700" leftIcon={<Save size={14} />}>
+                Save Institutional Settings
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

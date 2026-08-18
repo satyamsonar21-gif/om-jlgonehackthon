@@ -1,129 +1,135 @@
-import React, { useState } from 'react';
-import { Search, Bell, Sparkles, PanelLeftClose, PanelLeftOpen, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Search, Bell, Menu, Sparkles } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
-import { toast } from 'sonner';
+import { CommandPalette } from './CommandPalette';
+import { NotificationCenter } from './NotificationCenter';
+import { ProfileDropdown } from './ProfileDropdown';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { Role } from './Sidebar';
+import { getRoleFromPath } from '@/design-system/tokens';
 
 interface HeaderProps {
-  title: string;
+  title?: string;
   subtitle?: string;
+  onOpenMobileNav?: () => void;
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
-  const { isCollapsed, toggleSidebar } = useSidebar();
-  const [showNotifications, setShowNotifications] = useState(false);
+const roleMap: Record<string, Role> = {
+  student: 'STUDENT',
+  faculty: 'FACULTY',
+  company: 'COMPANY_MENTOR',
+  admin: 'ADMIN',
+};
 
-  const notifications = [
-    { id: 1, title: 'Weekly Report Due', desc: 'Week 5 synthesis report deadline in 24 hours', time: '10m ago', unread: true },
-    { id: 2, title: 'Attendance Clocked', desc: 'Morning biometric check-in verified', time: '2h ago', unread: false },
-    { id: 3, title: 'Evaluation Sign-off', desc: 'Faculty mentor approved Sprint 4 milestone', time: '1d ago', unread: false },
-  ];
+export function Header({ title, subtitle, onOpenMobileNav }: HeaderProps) {
+  const location = useLocation();
+  const roleKey = getRoleFromPath(location.pathname);
+  const role = roleMap[roleKey] || 'STUDENT';
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Compute Breadcrumb items from pathname
+  const breadcrumbItems = React.useMemo(() => {
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+    if (pathSegments.length <= 1) return [];
+
+    const items = pathSegments.map((segment, index) => {
+      const href = '/' + pathSegments.slice(0, index + 1).join('/');
+      const label =
+        segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+
+      return { label, href };
+    });
+
+    return items;
+  }, [location.pathname]);
 
   return (
-    <header 
-      className="h-16 flex items-center justify-between px-4 sm:px-8 border-b sticky top-0 z-20 backdrop-blur-md transition-colors"
-      style={{
-        backgroundColor: 'var(--surface)',
-        borderColor: 'var(--border)',
-        color: 'var(--text)',
-      }}
-    >
+    <header className="h-16 flex items-center justify-between px-4 sm:px-8 border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-20 transition-colors">
+      {/* Left: Mobile Toggle & Page Info */}
       <div className="flex items-center gap-3 min-w-0">
         <button
-          onClick={toggleSidebar}
-          title={isCollapsed ? "Expand Sidebar Menu" : "Collapse Sidebar Menu"}
-          className="p-2 rounded-xl border transition-colors cursor-pointer flex items-center justify-center flex-shrink-0"
-          style={{
-            borderColor: 'var(--border)',
-            backgroundColor: 'var(--surface-muted, var(--bg))',
-            color: 'var(--text)',
-          }}
-          aria-label="Toggle Slidebar"
+          type="button"
+          onClick={onOpenMobileNav}
+          className="lg:hidden p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center"
+          aria-label="Open navigation menu"
         >
-          {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          <Menu size={18} />
         </button>
 
         <div className="min-w-0">
-          <h1 className="text-base sm:text-lg font-bold tracking-tight leading-tight truncate" style={{ color: 'var(--text)' }}>
-            {title}
-          </h1>
+          {breadcrumbItems.length > 1 ? (
+            <Breadcrumb items={breadcrumbItems} className="mb-0.5" />
+          ) : null}
+
+          {title && (
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight truncate">
+              {title}
+            </h1>
+          )}
           {subtitle && (
-            <p className="text-xs font-medium mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
               {subtitle}
             </p>
           )}
         </div>
       </div>
-      
-      <div className="flex items-center gap-2.5 relative">
-        <button 
-          onClick={() => toast.info('System Search: Press Ctrl+K or type in any search bar')}
-          className="p-2 rounded-xl border transition-colors cursor-pointer"
-          style={{
-            borderColor: 'var(--border)',
-            backgroundColor: 'var(--surface-muted, var(--bg))',
-            color: 'var(--text)',
-          }}
-          aria-label="Search"
+
+      {/* Right: Search, Notifications, Profile */}
+      <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0 relative">
+        {/* Search CTA with shortcut badge */}
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer text-xs"
+          aria-label="Search platform (Ctrl+K)"
         >
-          <Search className="w-4 h-4" />
+          <Search size={15} />
+          <span className="hidden sm:inline">Search</span>
+          <kbd className="hidden sm:inline-block text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-400">
+            Ctrl+K
+          </kbd>
         </button>
-        
+
+        {/* Notifications Popover */}
         <div className="relative">
-          <button 
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 rounded-xl border transition-colors cursor-pointer"
-            style={{
-              borderColor: 'var(--border)',
-              backgroundColor: 'var(--surface-muted, var(--bg))',
-              color: 'var(--text)',
-            }}
-            aria-label="Notifications"
+          <button
+            type="button"
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer relative"
+            aria-label="Open notifications"
           >
-            <Bell className="w-4 h-4" />
-            <span 
-              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white" 
-              style={{ backgroundColor: 'var(--highlights, var(--cta))' }}
-            />
+            <Bell size={16} />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--role-accent)] ring-2 ring-white" />
           </button>
 
-          {showNotifications && (
-            <div 
-              className="absolute right-0 mt-2 w-80 rounded-2xl border shadow-xl p-4 z-50 animate-in fade-in slide-in-from-top-2"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)',
-                color: 'var(--text)',
-              }}
-            >
-              <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: 'var(--border)' }}>
-                <span className="font-bold text-xs">Notifications (3)</span>
-                <button 
-                  onClick={() => {
-                    toast.success('All notifications marked as read');
-                    setShowNotifications(false);
-                  }}
-                  className="text-[11px] font-mono hover:underline cursor-pointer" 
-                  style={{ color: 'var(--role-accent, var(--cta))' }}
-                >
-                  Mark all read
-                </button>
-              </div>
-
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {notifications.map((n) => (
-                  <div key={n.id} className="py-2.5 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold">{n.title}</span>
-                      <span className="text-[10px] font-mono opacity-50">{n.time}</span>
-                    </div>
-                    <p className="text-[11px] leading-snug" style={{ color: 'var(--text-muted)' }}>{n.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <NotificationCenter
+            isOpen={isNotificationsOpen}
+            onClose={() => setIsNotificationsOpen(false)}
+          />
         </div>
+
+        {/* Profile Dropdown */}
+        <ProfileDropdown role={role} />
       </div>
+
+      {/* Global Command Palette Dialog */}
+      <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );
 }

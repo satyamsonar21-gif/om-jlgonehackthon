@@ -1,177 +1,184 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import Header from '@/components/layout/Header';
+import { useOutletContext, Link } from 'react-router-dom';
+import { Header } from '@/components/layout/Header';
+import { PriorityBanner } from '@/components/common/PriorityBanner';
+import { StatCard, Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { 
   Users, 
   Building2, 
   Award, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Clock, 
   Activity, 
   CheckCircle2, 
-  Server, 
-  Database, 
-  Mail, 
-  ShieldCheck,
-  Shield,
-  FileCheck
+  Shield, 
+  FileCheck, 
+  ArrowRight, 
+  Clock, 
+  ExternalLink 
 } from 'lucide-react';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } }
-};
-
 export default function AdminDashboardPage() {
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+
   const stats = [
-    { label: 'Enrolled Students', value: '1,284', icon: Users, change: '+12%', up: true, desc: 'Across 6 Engineering branches' },
-    { label: 'Active Internships', value: '386', icon: Building2, change: '+5%', up: true, desc: 'Verified MoU partner programs' },
-    { label: 'Partner Companies', value: '142', icon: Activity, change: '+8%', up: true, desc: '12 added this semester' },
-    { label: 'Verified Certificates', value: '923', icon: Award, change: '+18%', up: true, desc: 'Cryptographically issued' },
+    { label: 'Enrolled Students', value: '1,284', sublabel: 'Across 6 Engineering Departments', icon: Users, iconColor: '#0284C7' },
+    { label: 'Active Placements', value: '386', sublabel: '100% Industry Verified MoUs', icon: Building2, iconColor: '#16A34A' },
+    { label: 'Partner Organizations', value: '142', sublabel: '12 Onboarded This Term', icon: Activity, iconColor: '#4F46E5' },
+    { label: 'Verified Certificates', value: '923', sublabel: 'Ed25519 Cryptographically Signed', icon: Award, iconColor: '#D97706' },
   ];
 
-  const activities = [
-    { id: 1, text: 'Priya Sharma submitted Week 4 Synthesis Report for TechCorp', time: '10 mins ago', type: 'report' },
-    { id: 2, text: 'TechCorp Solutions approved 5 new full-time conversion offers', time: '1 hour ago', type: 'offer' },
-    { id: 3, text: 'Dr. Rajesh Kumar conducted midterm audit for 18 CSE students', time: '2 hours ago', type: 'faculty' },
-    { id: 4, text: 'Institutional database automated backup completed successfully', time: '4 hours ago', type: 'system' },
+  const auditEvents = [
+    { id: 1, text: 'Priya Sharma (20CS101) submitted Week 4 Synthesis Report for TechCorp Solutions', time: '10 mins ago', type: 'report' },
+    { id: 2, text: 'TechCorp Solutions approved 5 new full-time conversion offer letters', time: '1 hour ago', type: 'offer' },
+    { id: 3, text: 'Dr. Rajesh Kumar completed midterm academic evaluation for 18 CSE students', time: '2 hours ago', type: 'faculty' },
+    { id: 4, text: 'Campus-wide database automated backup and encryption verification completed', time: '4 hours ago', type: 'system' },
     { id: 5, text: 'New Tamper-Proof Certificate issued to Amit Kumar (CERT-2026-089)', time: '5 hours ago', type: 'cert' },
   ];
 
   return (
-    <div className="min-h-full pb-16" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-      <Header title="Institution Governance Control" subtitle="University System Administrator Oversight" />
-      
-      <motion.main 
-        className="max-w-7xl mx-auto p-6 md:p-8 space-y-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* Top Hero Banner */}
-        <motion.div
-          variants={itemVariants}
-          className="rounded-2xl border shadow-md p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6"
-          style={{
-            backgroundColor: 'var(--surface)',
-            borderColor: 'var(--border)',
-            color: 'var(--text)'
-          }}
-        >
-          <div>
-            <div 
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold mb-2 border"
-              style={{
-                backgroundColor: 'var(--surface-muted)',
-                borderColor: 'var(--border)',
-                color: 'var(--primary)'
-              }}
-            >
-              <Shield size={13} />
-              MASTER AUDIT NODE ACTIVE
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text)' }}>
-              Campus-Wide Internship Governance
-            </h1>
-            <p className="text-xs mt-1 max-w-xl leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              Monitor institutional compliance, verify cryptographic credentials, and manage multi-department academic partnerships.
-            </p>
-          </div>
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title="Institutional Administration Dashboard"
+        subtitle="University System Oversight & Governance"
+        onOpenMobileNav={onOpenMobileNav}
+      />
 
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <Link
-              to="/admin/certificates"
-              className="px-5 py-3 rounded-xl font-bold font-mono text-xs tracking-wider uppercase transition-all shadow-md flex items-center gap-2 hover:scale-105"
-              style={{
-                backgroundColor: 'var(--cta)',
-                color: 'var(--cta-text)'
-              }}
-            >
-              <Award size={15} />
-              <span>Issue Certificates</span>
-            </Link>
-          </div>
-        </motion.div>
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        {/* 1. Priority Action Banner */}
+        <PriorityBanner
+          badgeText="GOVERNANCE ACTION"
+          title="12 Partner MoU Renewals & 5 Cryptographic Certificate Issuances Ready"
+          description="Review accredited partner company compliance agreements and authorize cryptographically signed batch certificates for graduating interns."
+          actionText="Issue Certificates"
+          actionHref="/admin/certificates"
+          actionIcon={<Award size={15} />}
+          secondaryText="Review Partner MoUs"
+          secondaryHref="/admin/companies"
+        />
 
-        {/* 4 Stat Cards */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* 2. Key Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {stats.map((stat, i) => (
-            <div 
-              key={i} 
-              className="p-6 rounded-2xl border shadow-sm space-y-3"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)'
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{stat.label}</span>
-                <div 
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs"
-                  style={{ backgroundColor: 'var(--surface-muted)', color: 'var(--highlights)' }}
-                >
-                  <stat.icon size={16} />
-                </div>
-              </div>
-              <div className="text-2xl font-black font-mono" style={{ color: 'var(--text)' }}>
-                {stat.value}
-              </div>
-              <span className="text-[11px] font-mono block" style={{ color: 'var(--text-muted)' }}>
-                {stat.desc}
-              </span>
-            </div>
+            <StatCard
+              key={i}
+              label={stat.label}
+              value={stat.value}
+              sublabel={stat.sublabel}
+              icon={stat.icon}
+              iconColor={stat.iconColor}
+            />
           ))}
-        </motion.div>
+        </div>
 
-        {/* Live Event Ledger Feed */}
-        <motion.div 
-          variants={itemVariants} 
-          className="rounded-2xl border shadow-sm p-6 space-y-4"
-          style={{
-            backgroundColor: 'var(--surface)',
-            borderColor: 'var(--border)'
-          }}
-        >
-          <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <div>
-              <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Live Institutional Event Ledger</h3>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Real-time tamper-proof audit trail</p>
-            </div>
-            <span className="text-xs font-mono font-bold" style={{ color: 'var(--highlights)' }}>
-              ● Stream Active
-            </span>
-          </div>
-
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {activities.map((item) => (
-              <div key={item.id} className="py-3.5 flex items-center justify-between text-xs gap-4">
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-8 h-8 rounded-lg flex items-center justify-center font-bold flex-shrink-0"
-                    style={{ backgroundColor: 'var(--surface-muted)', color: 'var(--highlights)' }}
-                  >
-                    <CheckCircle2 size={16} />
+        {/* 3. Main Administration Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Institutional Audit Event Ledger (Span 7) */}
+          <div className="lg:col-span-7 space-y-4">
+            <Card>
+              <CardHeader>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CardTitle>Institutional Event & Compliance Ledger</CardTitle>
+                    <Badge variant="success" size="sm" dot={true}>
+                      Active Stream
+                    </Badge>
                   </div>
-                  <span className="font-medium" style={{ color: 'var(--text)' }}>{item.text}</span>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Real-time immutable audit log of university internship lifecycle events
+                  </p>
                 </div>
-                <span className="font-mono text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                  {item.time}
-                </span>
-              </div>
-            ))}
+              </CardHeader>
+
+              <CardContent>
+                <div className="divide-y divide-slate-100">
+                  {auditEvents.map((item) => (
+                    <div key={item.id} className="py-3.5 flex items-center justify-between gap-4 text-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-sky-700 flex items-center justify-center flex-shrink-0 font-bold">
+                          <CheckCircle2 size={16} />
+                        </div>
+                        <span className="font-medium text-slate-900 leading-snug">{item.text}</span>
+                      </div>
+                      <span className="font-mono text-[11px] text-slate-400 whitespace-nowrap flex-shrink-0">
+                        {item.time}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </motion.div>
-      </motion.main>
+
+          {/* Quick Administration Actions & Governance Tools (Span 5) */}
+          <div className="lg:col-span-5 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Governance Directories</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2.5 text-xs">
+                  <Link
+                    to="/admin/students"
+                    className="p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 flex items-center justify-between transition-colors block"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Users size={16} className="text-sky-700" />
+                      <div>
+                        <span className="font-bold text-slate-900 block">Enrolled Students Registry</span>
+                        <span className="text-[11px] text-slate-500">1,284 student dossiers</span>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-slate-400" />
+                  </Link>
+
+                  <Link
+                    to="/admin/faculty"
+                    className="p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 flex items-center justify-between transition-colors block"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Building2 size={16} className="text-emerald-700" />
+                      <div>
+                        <span className="font-bold text-slate-900 block">Academic Faculty Guides</span>
+                        <span className="text-[11px] text-slate-500">Department guides & advisors</span>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-slate-400" />
+                  </Link>
+
+                  <Link
+                    to="/admin/companies"
+                    className="p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 flex items-center justify-between transition-colors block"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Building2 size={16} className="text-indigo-700" />
+                      <div>
+                        <span className="font-bold text-slate-900 block">Partner Companies & MoUs</span>
+                        <span className="text-[11px] text-slate-500">142 accredited partners</span>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-slate-400" />
+                  </Link>
+
+                  <Link
+                    to="/admin/certificates"
+                    className="p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 flex items-center justify-between transition-colors block"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Award size={16} className="text-amber-700" />
+                      <div>
+                        <span className="font-bold text-slate-900 block">Cryptographic Certificate Registry</span>
+                        <span className="text-[11px] text-slate-500">QR-verifiable credentials</span>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-slate-400" />
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

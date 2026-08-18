@@ -1,106 +1,83 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import Header from '@/components/layout/Header';
-import { Target, TrendingUp, Lightbulb, Code, Users, Brain, BookOpen, MessageSquare, Sparkles } from 'lucide-react';
-
-const dimensions = [
-  { name: 'Technical Skills', score: 82, icon: Code, color: '#0D9488' },
-  { name: 'Communication', score: 74, icon: MessageSquare, color: '#4338CA' },
-  { name: 'Problem Solving', score: 88, icon: Brain, color: '#0284C7' },
-  { name: 'Teamwork', score: 71, icon: Users, color: '#10B981' },
-  { name: 'Domain Knowledge', score: 79, icon: BookOpen, color: '#D97706' },
-  { name: 'Soft Skills & Leadership', score: 70, icon: Target, color: '#BE123C' },
-];
+import { useOutletContext } from 'react-router-dom';
+import { Header } from '@/components/layout/Header';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { StatCard } from '@/components/ui/Card';
+import { Progress } from '@/components/ui/Progress';
+import { Badge } from '@/components/ui/Badge';
+import { Sparkles, TrendingUp, CheckCircle2, Award, BookOpen, Clock, AlertCircle } from 'lucide-react';
 
 export default function PlacementScorePage() {
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+
+  const dimensions = [
+    { name: 'Biometric Attendance & Punctuality', score: 95, weight: '20%', desc: '23 of 25 days recorded without absence' },
+    { name: 'Weekly Synthesis Report Quality', score: 92, weight: '25%', desc: '4 of 4 reports approved with 4.8/5 avg' },
+    { name: 'Sprint Task Velocity & PRs', score: 85, weight: '20%', desc: '8 of 10 deliverables merged ahead of schedule' },
+    { name: 'Industry Supervisor Appraisal', score: 98, weight: '20%', desc: 'Rated 4.9/5.0 by TechCorp Lead Architect' },
+    { name: 'Profile Completeness & Dossier', score: 90, weight: '15%', desc: 'Verified GitHub, skills, and academic transcripts' },
+  ];
+
+  const overallScore = 92;
+
   return (
-    <div className="min-h-full pb-16 text-slate-900">
-      <Header title="Placement Readiness Index" subtitle="Multi-dimensional competency assessment" />
-      
-      <main className="max-w-7xl mx-auto p-6 md:p-8 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Overall Circular Score */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col items-center text-center justify-between space-y-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0D9488] text-xs font-mono font-bold mb-4">
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title="Placement Readiness Index"
+        subtitle="Institutional multi-dimensional readiness benchmark for graduating students"
+        onOpenMobileNav={onOpenMobileNav}
+      />
+
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        {/* Main Score Hero */}
+        <Card className="p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-bold">
                 <Sparkles size={12} />
-                Calculated Score
+                <span>TOP 5% IN COHORT</span>
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Overall Readiness</h2>
-              <p className="text-xs text-slate-500 mt-1">Based on 6 verified evaluation pillars</p>
-            </div>
-
-            <div className="relative w-44 h-44 flex items-center justify-center my-2">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="transparent" stroke="#E2E8F0" strokeWidth="8" />
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="42" 
-                  fill="transparent" 
-                  stroke="#0D9488" 
-                  strokeWidth="8" 
-                  strokeDasharray="264" 
-                  strokeDashoffset={264 * (1 - 0.78)} 
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-5xl font-extrabold font-mono text-slate-900">78</span>
-                <span className="text-xs font-mono text-slate-400">/ 100</span>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2 border-t border-slate-100 w-full">
-              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-block">
-                TIER 1 ELIGIBLE (STRONG)
-              </span>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                You qualify for prime Tier-1 engineering placement opportunities. Focus on Communication to reach 85%+.
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                Placement Readiness Score: {overallScore} / 100
+              </h1>
+              <p className="text-xs text-slate-600 leading-relaxed max-w-lg">
+                Calculated dynamically from attendance biometric timestamps, weekly faculty grades, industry sprint velocity, and supervisor appraisals.
               </p>
             </div>
+
+            <div className="w-24 h-24 rounded-2xl bg-emerald-50 border-2 border-emerald-500 text-emerald-700 flex flex-col items-center justify-center font-bold flex-shrink-0 shadow-sm">
+              <span className="text-3xl font-black font-mono leading-none">{overallScore}</span>
+              <span className="text-[10px] font-mono uppercase mt-1">Verified</span>
+            </div>
           </div>
 
-          {/* Right Column: 6-Dimension Breakdown */}
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-sm text-slate-900">Competency Pillar Breakdown</h3>
-              <span className="text-xs font-mono text-slate-400">Weighted Average</span>
-            </div>
+          {/* Breakdown Dimensions */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono">
+              Evaluation Dimensions & Weights
+            </h3>
 
-            <div className="space-y-4">
-              {dimensions.map((dim) => {
-                const Icon = dim.icon;
-                return (
-                  <div key={dim.name} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div 
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-xs"
-                          style={{ backgroundColor: dim.color }}
-                        >
-                          <Icon size={14} />
-                        </div>
-                        <span className="font-bold text-xs text-slate-900">{dim.name}</span>
-                      </div>
-                      <span className="font-mono font-bold text-xs" style={{ color: dim.color }}>
-                        {dim.score} / 100
-                      </span>
+            <div className="space-y-3.5">
+              {dimensions.map((dim, i) => (
+                <div key={i} className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900">{dim.name}</span>
+                      <span className="text-[11px] text-slate-500 block">{dim.desc}</span>
                     </div>
-
-                    <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden">
-                      <div 
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${dim.score}%`, backgroundColor: dim.color }}
-                      />
+                    <div className="text-right">
+                      <span className="font-mono font-bold text-slate-900 text-sm">{dim.score}%</span>
+                      <span className="text-[10px] font-mono text-slate-400 block">Weight: {dim.weight}</span>
                     </div>
                   </div>
-                );
-              })}
+
+                  <Progress value={dim.score} size="sm" variant="success" />
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </main>
+        </Card>
+      </div>
     </div>
   );
 }

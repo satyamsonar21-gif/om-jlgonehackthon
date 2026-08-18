@@ -1,214 +1,154 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import Header from '@/components/layout/Header';
+import { useOutletContext, Link } from 'react-router-dom';
+import { Header } from '@/components/layout/Header';
+import { PriorityBanner } from '@/components/common/PriorityBanner';
+import { StatCard, Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { Progress } from '@/components/ui/Progress';
 import { 
   Users, 
   Briefcase, 
   FileText, 
   Star, 
   Plus, 
-  Download, 
-  ClipboardList, 
   ArrowRight, 
+  ChevronRight, 
   CheckCircle2, 
-  ChevronRight,
-  Sparkles,
-  Building2
+  Clock, 
+  Eye
 } from 'lucide-react';
-import { activeCompanyInternsData } from './CompanyInternsPage';
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } },
-};
+import { demoStudents, demoInternships } from '@/data/demo';
 
 export default function CompanyDashboardPage() {
-  const activeCount = activeCompanyInternsData.length; // 16
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
 
-  const stats = [
-    { label: 'Active Supervised Interns', value: String(activeCount), icon: Users, desc: 'Across 7 project teams', color: '#4F46E5' },
-    { label: 'Candidate Pipeline', value: '52', icon: FileText, desc: 'Applications received', color: 'var(--secondary)' },
-    { label: 'Open Positions', value: '6', icon: Briefcase, desc: 'Fall 2026 Batch', color: '#0284C7' },
-    { label: 'Mentor Rating', value: '4.8 / 5', icon: Star, desc: '98% Satisfaction', color: '#10B981' },
-  ];
-
-  const featuredInterns = activeCompanyInternsData.slice(0, 6);
+  const activeInterns = demoStudents.slice(0, 6);
 
   return (
-    <div className="min-h-full pb-16" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-      <Header title="Company Mission Control" subtitle="TechCorp Solutions · Industry Supervisor & Mentorship Hub" />
-      
-      <motion.main 
-        className="max-w-7xl mx-auto p-6 md:p-8 space-y-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* Top Hero & Action Toolbar */}
-        <motion.div
-          variants={itemVariants}
-          className="rounded-2xl border shadow-md p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6"
-          style={{
-            backgroundColor: 'var(--surface)',
-            borderColor: 'var(--border)',
-            color: 'var(--text)'
-          }}
-        >
-          <div className="space-y-2 max-w-xl">
-            <div 
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold border"
-              style={{
-                backgroundColor: 'var(--accent-soft)',
-                borderColor: 'var(--border)',
-                color: 'var(--role-accent, var(--primary))'
-              }}
-            >
-              <Sparkles size={13} />
-              <span>VERIFIED ENTERPRISE WORKSPACE · #TC-2026</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text)' }}>
-              Engineering Mentorship & Cohort Velocity
-            </h1>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              Coordinate technical deliverables for {activeCount} active interns, evaluate weekly progress reports, and screen candidate pipelines in real time.
-            </p>
-          </div>
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title="Company Mentor Dashboard"
+        subtitle="TechCorp Solutions · Industry Supervisor & Mentorship Hub"
+        onOpenMobileNav={onOpenMobileNav}
+      />
 
-          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
-            <Link
-              to="/company/listings/new"
-              className="px-5 py-3 rounded-xl font-bold font-mono text-xs tracking-wider uppercase transition-all shadow-md flex items-center gap-2 hover:scale-105"
-              style={{
-                backgroundColor: 'var(--cta)',
-                color: 'var(--cta-text)'
-              }}
-            >
-              <Plus size={15} />
-              <span>Post New Listing</span>
-            </Link>
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        {/* 1. Priority Action Banner */}
+        <PriorityBanner
+          badgeText="PENDING ACTIONS"
+          title="5 Candidate Applications & 3 Milestone Work Logs Awaiting Sign-Off"
+          description="Screen 5 new applicant dossiers for Full Stack Developer listing and review Sprint 4 work logs submitted by active interns."
+          actionText="Review Applications"
+          actionHref="/company/applications"
+          actionIcon={<FileText size={15} />}
+          secondaryText="Post New Listing"
+          secondaryHref="/company/listings/new"
+        />
 
-            <Link
-              to="/company/applications"
-              className="px-4 py-3 rounded-xl font-bold font-mono text-xs tracking-wider uppercase transition-all border flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800"
-              style={{
-                borderColor: 'var(--border)',
-                color: 'var(--text)'
-              }}
-            >
-              <span>52 Applications</span>
-              <ChevronRight size={14} />
-            </Link>
-          </div>
-        </motion.div>
+        {/* 2. Key Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <StatCard
+            label="Supervised Interns"
+            value="16 Active"
+            sublabel="Across 7 Project Teams"
+            icon={Users}
+            iconColor="#4F46E5"
+          />
+          <StatCard
+            label="Candidate Pipeline"
+            value="52 Applicants"
+            sublabel="Fall 2026 Batch"
+            icon={FileText}
+            iconColor="#2563EB"
+          />
+          <StatCard
+            label="Open Listings"
+            value="6 Roles"
+            sublabel="Verified University MoUs"
+            icon={Briefcase}
+            iconColor="#0284C7"
+          />
+          <StatCard
+            label="Mentor Satisfaction"
+            value="4.8 / 5.0"
+            sublabel="98% Institutional Rating"
+            icon={Star}
+            iconColor="#16A34A"
+          />
+        </div>
 
-        {/* 4 Stat Cards */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {stats.map((stat, i) => (
-            <div 
-              key={i} 
-              className="p-6 rounded-2xl border shadow-xs space-y-3"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)'
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{stat.label}</span>
-                <div 
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs"
-                  style={{ backgroundColor: 'var(--surface-muted)', color: stat.color }}
-                >
-                  <stat.icon size={16} />
+        {/* 3. Active Supervised Interns & Sprint Velocity */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle>Active Supervised Interns</CardTitle>
+                  <Badge variant="info" size="sm">
+                    {activeInterns.length} Team Members
+                  </Badge>
                 </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Live sprint progress, work log submissions, and attendance tracking
+                </p>
               </div>
-              <div className="text-2xl font-black font-mono" style={{ color: 'var(--text)' }}>
-                {stat.value}
-              </div>
-              <span className="text-[11px] font-mono block" style={{ color: 'var(--text-muted)' }}>
-                {stat.desc}
-              </span>
-            </div>
-          ))}
-        </motion.div>
+              <Link to="/company/interns">
+                <Button variant="outline" size="sm">
+                  Complete Roster (16)
+                </Button>
+              </Link>
+            </CardHeader>
 
-        {/* Active Supervised Interns Grid */}
-        <motion.div 
-          variants={itemVariants} 
-          className="rounded-2xl border shadow-sm p-6 space-y-4"
-          style={{
-            backgroundColor: 'var(--surface)',
-            borderColor: 'var(--border)'
-          }}
-        >
-          <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <div>
-              <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Active Supervised Interns ({activeCount})</h3>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Live sprint execution across 7 project teams</p>
-            </div>
-            <Link to="/company/interns" className="text-xs font-mono font-bold hover:underline" style={{ color: 'var(--role-accent, var(--cta))' }}>
-              View Complete Roster ({activeCount})
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredInterns.map((intern) => {
-              const taskProgress = Math.round((intern.tasksCompleted / intern.totalTasks) * 100);
-
-              return (
-                <div 
-                  key={intern.id} 
-                  className="p-5 rounded-2xl border flex flex-col justify-between space-y-3 transition-all hover:scale-[1.01]"
-                  style={{
-                    backgroundColor: 'var(--surface-muted)',
-                    borderColor: 'var(--border)'
-                  }}
-                >
-                  <div className="flex items-start justify-between">
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeInterns.map((intern) => (
+                  <div
+                    key={intern.id}
+                    className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between space-y-3"
+                  >
                     <div>
-                      <h4 className="font-bold text-sm" style={{ color: 'var(--text)' }}>{intern.name}</h4>
-                      <span className="text-xs font-semibold" style={{ color: 'var(--role-accent, var(--cta))' }}>{intern.role}</span>
-                      <span className="text-[11px] font-mono block text-slate-400 font-semibold">{intern.projectTeam}</span>
-                    </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      {intern.attendance}% Attendance
-                    </span>
-                  </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900 leading-snug">
+                            {intern.name}
+                          </h4>
+                          <span className="text-xs text-indigo-700 font-semibold block mt-0.5">
+                            {intern.role}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400 font-medium">
+                            {intern.roll} · {intern.dept.split('&')[0]}
+                          </span>
+                        </div>
+                        <StatusBadge status={intern.status === 'at_risk' ? 'AT_RISK' : 'ACTIVE'} size="sm" />
+                      </div>
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                      <span>Sprint Velocity ({intern.tasksCompleted}/{intern.totalTasks})</span>
-                      <span>{taskProgress}%</span>
+                      <div className="mt-3 space-y-1.5">
+                        <div className="flex justify-between text-[11px] font-mono text-slate-500">
+                          <span>Sprint Velocity (8/10 Tasks)</span>
+                          <span className="font-bold text-slate-700">80%</span>
+                        </div>
+                        <Progress value={80} size="sm" variant={intern.status === 'at_risk' ? 'danger' : 'primary'} />
+                      </div>
                     </div>
-                    <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                      <div 
-                        className="h-full rounded-full" 
-                        style={{ width: `${taskProgress}%`, backgroundColor: 'var(--role-accent, var(--cta))' }} 
-                      />
-                    </div>
-                  </div>
 
-                  <div className="pt-2 border-t flex items-center justify-between text-[11px] font-mono" style={{ borderColor: 'var(--border)' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{intern.lastLog}</span>
-                    <Link to="/company/interns" className="font-bold flex items-center gap-1 hover:underline" style={{ color: 'var(--role-accent, var(--cta))' }}>
-                      <span>Evaluate</span>
-                      <ChevronRight size={12} />
-                    </Link>
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-slate-500">Last: {intern.lastLogDate}</span>
+                      <Link
+                        to={`/company/interns/${intern.id}`}
+                        className="font-bold text-indigo-700 hover:underline flex items-center gap-1"
+                      >
+                        <span>Evaluate</span>
+                        <ChevronRight size={12} />
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
-      </motion.main>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

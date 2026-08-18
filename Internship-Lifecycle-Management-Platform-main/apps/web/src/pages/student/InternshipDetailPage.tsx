@@ -1,109 +1,211 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useParams, Link, useOutletContext, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
-import { Link, useParams } from 'react-router-dom';
-import { ChevronLeft, Building2, MapPin, Clock, IndianRupee, Calendar, Users, CheckCircle, Send, Sparkles } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { Textarea } from '@/components/ui/Input';
+import { 
+  Building2, 
+  MapPin, 
+  Clock, 
+  IndianRupee, 
+  CheckCircle2, 
+  ArrowLeft, 
+  Send, 
+  Calendar, 
+  ShieldCheck,
+  Bookmark,
+  Share2
+} from 'lucide-react';
+import { demoInternships } from '@/data/demo';
+import { toast } from 'sonner';
 
 export default function InternshipDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [applied, setApplied] = useState(false);
-  const [coverLetter, setCoverLetter] = useState('');
+  const navigate = useNavigate();
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+
+  const internshipId = parseInt(id || '1', 10);
+  const job = demoInternships.find((i) => i.id === internshipId) || demoInternships[0];
+
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [coverNote, setCoverNote] = useState('');
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  const handleApply = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success(`Application submitted to ${job.company} for ${job.role}!`);
+    setIsApplyModalOpen(false);
+    navigate('/student/applications');
+  };
 
   return (
-    <div className="min-h-full pb-16 text-slate-900">
-      <Header title="Internship Role Specification" subtitle="Software Engineering Intern · TechCorp Solutions" />
-      
-      <main className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
-        <Link 
-          to="/student/internships" 
-          className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#0D9488] hover:underline"
-        >
-          <ChevronLeft size={14} /> Back to Browse Internships
-        </Link>
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title={job.role}
+        subtitle={`${job.company} · ${job.location}`}
+        onOpenMobileNav={onOpenMobileNav}
+      />
 
-        {/* Opportunity Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 12 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <div>
+          <Link
+            to="/student/internships"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            <span>Back to Find Internships</span>
+          </Link>
+        </div>
+
+        {/* Hero Role Card */}
+        <Card className="space-y-6 p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-slate-100">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-teal-50 text-[#0D9488] border border-teal-200 flex items-center justify-center font-bold text-xl shadow-xs flex-shrink-0">
-                TC
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-xs">
+                {job.company.substring(0, 2).toUpperCase()}
               </div>
+
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-xl font-bold text-slate-900">Software Engineering Intern</h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-teal-50 text-[#0D9488] border border-teal-200">
-                    VERIFIED PARTNER
-                  </span>
+                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                    {job.role}
+                  </h1>
+                  <Badge variant="success" size="sm">
+                    Verified Partner
+                  </Badge>
                 </div>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">TechCorp Solutions · Hybrid (Bangalore)</p>
-                <div className="flex flex-wrap gap-4 mt-2 text-xs text-slate-600 font-mono">
-                  <span className="flex items-center gap-1 font-semibold text-slate-900"><IndianRupee size={12} /> ₹15,000 / month</span>
-                  <span className="flex items-center gap-1"><Clock size={12} /> 12 weeks</span>
-                  <span className="flex items-center gap-1"><Users size={12} /> 3 openings</span>
-                  <span className="flex items-center gap-1"><Calendar size={12} /> Apply by Aug 15, 2026</span>
-                </div>
+                <div className="text-sm font-semibold text-amber-700 mt-1">{job.company}</div>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsBookmarked(!isBookmarked);
+                  toast.success(isBookmarked ? 'Removed bookmark' : 'Bookmarked role');
+                }}
+              >
+                <Bookmark size={15} className={isBookmarked ? 'fill-amber-600 text-amber-600' : ''} />
+              </Button>
+
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setIsApplyModalOpen(true)}
+                rightIcon={<Send size={14} />}
+              >
+                Apply Now
+              </Button>
             </div>
           </div>
 
-          <div className="space-y-4 text-xs">
+          {/* Quick Specifications Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
             <div>
-              <h3 className="font-bold text-sm text-slate-900 mb-2">About the Role</h3>
-              <p className="text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                We are looking for a motivated Software Engineering Intern to join our backend engineering team. You will work directly alongside senior engineers building scalable REST APIs, microservices, and database schemas using React, Node.js, and PostgreSQL.
-              </p>
+              <span className="text-slate-500 block">Location</span>
+              <span className="font-bold text-slate-900 mt-0.5 block">{job.location} ({job.type})</span>
             </div>
-
             <div>
-              <h3 className="font-bold text-sm text-slate-900 mb-2">Key Required Competencies</h3>
-              <div className="flex flex-wrap gap-2">
-                {['React', 'TypeScript', 'Node.js', 'REST APIs', 'PostgreSQL', 'Git'].map(s => (
-                  <span key={s} className="px-3 py-1 rounded-xl text-xs font-mono font-medium bg-slate-100 border border-slate-200 text-slate-700">
-                    {s}
-                  </span>
-                ))}
-              </div>
+              <span className="text-slate-500 block">Stipend</span>
+              <span className="font-bold text-slate-900 font-mono mt-0.5 block">{job.stipend}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Duration</span>
+              <span className="font-bold text-slate-900 font-mono mt-0.5 block">{job.duration}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Openings</span>
+              <span className="font-bold text-slate-900 font-mono mt-0.5 block">{job.openings} Positions</span>
             </div>
           </div>
 
-          {/* Application Box */}
-          <div className="pt-6 border-t border-slate-100">
-            {applied ? (
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center text-emerald-800 space-y-1">
-                <div className="flex items-center justify-center gap-1.5 font-bold text-sm">
-                  <CheckCircle size={16} /> Application Submitted Successfully!
-                </div>
-                <p className="text-xs text-emerald-700">Your profile and dossier were forwarded to TechCorp HR.</p>
-              </div>
-            ) : (
-              <form onSubmit={(e) => { e.preventDefault(); setApplied(true); }} className="space-y-4">
-                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600 block">
-                  Candidate Note / Cover Statement
-                </label>
-                <textarea
-                  rows={3}
-                  value={coverLetter}
-                  onChange={e => setCoverLetter(e.target.value)}
-                  placeholder="Briefly highlight your relevant projects or coursework (e.g. built OAuth2 system with React)..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none input-focus-ring"
-                  style={{ '--primary': '#0D9488' } as React.CSSProperties}
-                  required
-                />
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-bold font-mono tracking-wider uppercase transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+          {/* Role Overview */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              Role Overview & Description
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed">{job.description}</p>
+          </div>
+
+          {/* Key Requirements */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              Requirements & Qualifications
+            </h3>
+            <ul className="space-y-2 text-xs text-slate-600">
+              {job.requirements.map((req, idx) => (
+                <li key={idx} className="flex items-start gap-2">
+                  <CheckCircle2 size={15} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>{req}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Required Skills */}
+          <div className="space-y-3 pt-2">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              Tech Stack & Domain Tags
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {job.skills.map((s) => (
+                <span
+                  key={s}
+                  className="px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-100 border border-slate-200 text-slate-800"
                 >
-                  <Send size={14} /> Submit Application
-                </button>
-              </form>
-            )}
+                  {s}
+                </span>
+              ))}
+            </div>
           </div>
-        </motion.div>
-      </main>
+        </Card>
+      </div>
+
+      {/* Apply Modal */}
+      <Modal
+        isOpen={isApplyModalOpen}
+        onClose={() => setIsApplyModalOpen(false)}
+        title={`Apply to ${job.company}`}
+        size="md"
+      >
+        <form onSubmit={handleApply} className="space-y-4 text-xs">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <div className="font-bold text-slate-900 text-sm">{job.role}</div>
+            <div className="text-xs font-semibold text-amber-700">
+              {job.company} · {job.stipend}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl border border-slate-100 bg-white font-mono text-[11px] space-y-1">
+            <span className="text-slate-500 font-semibold block">Applicant:</span>
+            <div className="text-slate-800 font-bold">Priya Sharma (PRN: 20CS101)</div>
+            <div className="text-slate-500">CGPA: 8.9 · Dept. of Computer Science & Engineering</div>
+          </div>
+
+          <Textarea
+            label="Candidate Statement / Cover Note"
+            rows={4}
+            value={coverNote}
+            onChange={(e) => setCoverNote(e.target.value)}
+            placeholder="Describe your technical deliverables, past project GitHub repos, and why you are interested in this position..."
+            required
+          />
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button variant="secondary" size="sm" onClick={() => setIsApplyModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" leftIcon={<Send size={13} />}>
+              Submit Application
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

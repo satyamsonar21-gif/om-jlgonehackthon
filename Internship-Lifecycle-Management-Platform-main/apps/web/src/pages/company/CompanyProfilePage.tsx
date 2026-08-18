@@ -1,196 +1,116 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import Header from '@/components/layout/Header';
-import { Building2, Globe, MapPin, Mail, Phone, Save, Check, Users, Briefcase, Star, Award } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import { Header } from '@/components/layout/Header';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { Input, Textarea } from '@/components/ui/Input';
+import { Building2, Mail, Phone, MapPin, Globe, Save, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CompanyProfilePage() {
-  const [saved, setSaved] = useState(false);
-  const [techStack, setTechStack] = useState([
-    'React', 'Node.js', 'TypeScript', 'Go', 'PostgreSQL', 'AWS Cloud', 'Docker', 'Kubernetes'
-  ]);
-  const [newTech, setNewTech] = useState('');
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
 
-  const handleAddTech = () => {
-    if (newTech.trim() && !techStack.includes(newTech.trim())) {
-      setTechStack([...techStack, newTech.trim()]);
-      setNewTech('');
-      toast.success('Technology added to company stack');
-    }
-  };
-
-  const handleRemoveTech = (item: string) => {
-    setTechStack(techStack.filter(t => t !== item));
-    toast.info('Technology removed');
-  };
+  const [companyName, setCompanyName] = useState('TechCorp Solutions Pvt. Ltd.');
+  const [mentorName, setMentorName] = useState('Siddharth Nambiar');
+  const [email, setEmail] = useState('siddharth@techcorp.com');
+  const [phone, setPhone] = useState('+91 80 4123 4567');
+  const [website, setWebsite] = useState('https://techcorp.com');
+  const [address, setAddress] = useState('Tech Park, Outer Ring Road, Bangalore, KA - 560103');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    toast.success('Company profile & recruitment parameters saved');
-    setTimeout(() => setSaved(false), 3000);
+    toast.success('Company profile updated successfully!');
   };
 
   return (
-    <div className="min-h-full pb-16" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-      <Header 
-        title="Partner Organization Profile" 
-        subtitle="TechCorp Solutions · Industry Partner Workspace & Mentor Settings" 
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title="Company Profile"
+        subtitle="Manage organization details, primary mentor contact, and university MoU status"
+        onOpenMobileNav={onOpenMobileNav}
       />
 
-      <main className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
-        {/* Profile Card Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 12 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border shadow-sm p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6"
-          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-        >
-          <div className="w-20 h-20 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-[#4F46E5] flex items-center justify-center text-2xl font-black shadow-xs flex-shrink-0 border border-indigo-300 dark:border-indigo-800">
-            TC
-          </div>
-
-          <div className="flex-1 text-center sm:text-left space-y-1">
-            <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
-              <h2 className="text-xl font-bold" style={{ color: 'var(--text)' }}>TechCorp Solutions Inc.</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-indigo-100 dark:bg-indigo-950 text-[#4F46E5] dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
-                MoU Tier-1 Partner
-              </span>
-            </div>
-            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              Enterprise Cloud Infrastructure & Software Engineering Solutions
-            </p>
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-mono pt-2" style={{ color: 'var(--text-muted)' }}>
-              <span>Headquarters: Bangalore, India</span>
-              <span>•</span>
-              <span>16 Active Supervised Interns</span>
-              <span>•</span>
-              <span>Lead Mentor: Siddharth Nambiar</span>
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <Card className="p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-xs">
+                TC
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">{companyName}</h1>
+                <div className="text-xs text-slate-500 font-mono mt-0.5">
+                  Lead Supervisor: {mentorName} · MoU Active (2025–2028)
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant="success" size="sm">Accredited Partner</Badge>
+                  <span className="text-xs font-mono font-bold text-slate-700">16 Supervised Interns</span>
+                </div>
+              </div>
             </div>
           </div>
-        </motion.div>
 
-        {/* Company Settings Form */}
-        <form onSubmit={handleSave} className="rounded-2xl border shadow-sm p-6 space-y-6" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <div className="border-b pb-3 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Company Organization & Contact Directory</h3>
-            <span className="text-xs font-mono font-semibold" style={{ color: 'var(--highlights)' }}>Partner ID: #TC-2026</span>
-          </div>
+          <form onSubmit={handleSave} className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Company Name"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                leftIcon={<Building2 size={15} />}
+                required
+              />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                Industry Sector
-              </label>
-              <input 
-                type="text" 
-                defaultValue="Information Technology & Cloud Services" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+              <Input
+                label="Lead Mentor / Supervisor"
+                value={mentorName}
+                onChange={(e) => setMentorName(e.target.value)}
+                required
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                Company Website
-              </label>
-              <input 
-                type="url" 
-                defaultValue="https://techcorp-solutions.io" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Work Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                leftIcon={<Mail size={15} />}
+                required
+              />
+
+              <Input
+                label="Phone Contact"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                leftIcon={<Phone size={15} />}
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                Mentor / Coordinator Email
-              </label>
-              <input 
-                type="email" 
-                defaultValue="internships@techcorp-solutions.io" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Website URL"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                leftIcon={<Globe size={15} />}
+              />
+
+              <Input
+                label="Office Location"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                leftIcon={<MapPin size={15} />}
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                Recruitment Office Phone
-              </label>
-              <input 
-                type="text" 
-                defaultValue="+91 80 4123 9900" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
-              />
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <Button type="submit" variant="primary" size="md" className="bg-indigo-600 hover:bg-indigo-700" leftIcon={<Save size={14} />}>
+                Save Changes
+              </Button>
             </div>
-          </div>
-
-          {/* Primary Engineering Stack */}
-          <div className="space-y-3 pt-2">
-            <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-              Primary Technology Stack & Candidate Evaluation Criteria
-            </label>
-            
-            <div className="flex flex-wrap gap-2">
-              {techStack.map(item => (
-                <span 
-                  key={item} 
-                  className="px-3 py-1 rounded-xl text-xs font-mono font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 flex items-center gap-1.5"
-                >
-                  <span>{item}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => handleRemoveTech(item)} 
-                    className="hover:text-rose-600 font-bold ml-1 cursor-pointer"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            <div className="flex gap-2 max-w-sm pt-1">
-              <input
-                type="text"
-                value={newTech}
-                onChange={(e) => setNewTech(e.target.value)}
-                placeholder="Add skill requirement (e.g. GraphQL)..."
-                className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl px-3 py-2 text-xs focus:outline-none"
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
-              />
-              <button
-                type="button"
-                onClick={handleAddTech}
-                className="px-4 py-2 rounded-xl bg-[#4F46E5] text-white text-xs font-semibold hover:bg-[#4338CA] transition-colors cursor-pointer"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t flex justify-end" style={{ borderColor: 'var(--border)' }}>
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl font-bold font-mono tracking-wider uppercase transition-all shadow-md flex items-center gap-2 cursor-pointer text-white"
-              style={{ backgroundColor: 'var(--cta)' }}
-            >
-              {saved ? (
-                <>
-                  <Check size={14} />
-                  <span>Profile Saved</span>
-                </>
-              ) : (
-                <>
-                  <Save size={14} />
-                  <span>Save Organization Profile</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </main>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -7,253 +7,362 @@ import {
   Building2, 
   Shield, 
   ArrowRight, 
-  CheckCircle2, 
-  Sparkles,
-  Lock,
-  Mail,
-  KeyRound,
-  Layers
+  Sparkles, 
+  Eye, 
+  EyeOff, 
+  Mail, 
+  Lock, 
+  Info,
+  CheckCircle2
 } from 'lucide-react';
-import { type RoleKey } from '@/design-system/tokens';
+import { Button } from '@/components/ui/Button';
+import { Input, Checkbox } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
+import { RoleKey } from '@/design-system/tokens';
+import { toast } from 'sonner';
 
-const roles: {
+interface RoleOption {
   id: RoleKey;
   label: string;
   badge: string;
   icon: React.ElementType;
   heading: string;
   subheading: string;
-  identifierLabel: string;
-  identifierPlaceholder: string;
   defaultEmail: string;
-  actionText: string;
   targetPath: string;
-}[] = [
+  color: string;
+}
+
+const roleOptions: RoleOption[] = [
   {
     id: 'student',
     label: 'Student',
-    badge: 'Growth & Momentum',
+    badge: 'Student Portal',
     icon: GraduationCap,
-    heading: 'Student Launchpad',
-    subheading: 'Track internships, log daily progress, and view placement readiness.',
-    identifierLabel: 'College Roll / Student Email',
-    identifierPlaceholder: 'priya.sharma@college.edu',
+    heading: 'Student Portal',
+    subheading: 'Access active internships, clock work logs, and submit weekly reports.',
     defaultEmail: 'priya.sharma@college.edu',
-    actionText: 'ENTER STUDENT LAUNCHPAD',
     targetPath: '/student',
+    color: '#D97706',
   },
   {
     id: 'faculty',
     label: 'Faculty',
-    badge: 'Academic Observatory',
+    badge: 'Academic Guide',
     icon: BookOpen,
-    heading: 'Faculty Observatory',
+    heading: 'Faculty Guide Portal',
     subheading: 'Monitor cohort telemetry, review weekly reports, and guide at-risk interns.',
-    identifierLabel: 'Faculty ID / University Email',
-    identifierPlaceholder: 'rajesh.kumar@university.edu',
     defaultEmail: 'rajesh.kumar@university.edu',
-    actionText: 'ENTER FACULTY OBSERVATORY',
     targetPath: '/faculty',
+    color: '#059669',
   },
   {
     id: 'company',
     label: 'Company Mentor',
-    badge: 'Mission Control',
+    badge: 'Industry Supervisor',
     icon: Building2,
-    heading: 'Industry Workspace',
-    subheading: 'Manage intern tasks, evaluate milestone submissions, and assess candidates.',
-    identifierLabel: 'Company Work Email',
-    identifierPlaceholder: 'mentor@techcorp.com',
+    heading: 'Company Mentor Portal',
+    subheading: 'Manage active intern tasks, evaluate milestone submissions, and assess candidates.',
     defaultEmail: 'mentor@techcorp.com',
-    actionText: 'ENTER MISSION CONTROL',
     targetPath: '/company',
+    color: '#4F46E5',
   },
   {
     id: 'admin',
     label: 'Administrator',
-    badge: 'System Governance',
+    badge: 'Institutional Governance',
     icon: Shield,
-    heading: 'Institutional Control',
-    subheading: 'Manage institution configurations, verify credentials, and view system audits.',
-    identifierLabel: 'Administrator Access Key / Email',
-    identifierPlaceholder: 'admin.root@institution.edu',
+    heading: 'Administrator Portal',
+    subheading: 'Campus-wide governance, partner MoUs, and cryptographic certificate issuance.',
     defaultEmail: 'admin.root@institution.edu',
-    actionText: 'ENTER COMMAND CENTER',
     targetPath: '/admin',
+    color: '#0284C7',
   },
 ];
 
 export default function SignInPage() {
   const [activeRole, setActiveRole] = useState<RoleKey>('student');
-  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('priya.sharma@college.edu');
+  const [password, setPassword] = useState('demo123456');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const currentRole = roles.find((r) => r.id === activeRole) || roles[0];
+  // Forgot password modal state
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [forgotStep, setForgotStep] = useState<'email' | 'code' | 'reset' | 'done'>('email');
+  const [forgotEmail, setForgotEmail] = useState('');
+
+  const navigate = useNavigate();
+  const currentRole = roleOptions.find((r) => r.id === activeRole) || roleOptions[0];
   const IconComponent = currentRole.icon;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleRoleChange = (roleId: RoleKey) => {
+    setActiveRole(roleId);
+    const chosen = roleOptions.find((r) => r.id === roleId);
+    if (chosen) {
+      setEmail(chosen.defaultEmail);
+    }
+  };
+
+  const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(currentRole.targetPath);
+    setIsLoading(true);
+
+    setTimeout(() => {
+      setIsLoading(false);
+      toast.success(`Signed in successfully as ${currentRole.label}`);
+      navigate(currentRole.targetPath);
+    }, 400);
+  };
+
+  const handleForgotSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forgotStep === 'email') {
+      setForgotStep('code');
+      toast.info(`Verification code sent to ${forgotEmail || email}`);
+    } else if (forgotStep === 'code') {
+      setForgotStep('reset');
+    } else if (forgotStep === 'reset') {
+      setForgotStep('done');
+      toast.success('Password reset successfully');
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden bg-[#0A192F] text-white">
-      {/* Subtle Ambient Navy Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
-
-      {/* Top Brand Bar */}
-      <div className="z-10 mb-8 flex flex-col items-center text-center">
-        <Link to="/" className="inline-flex items-center gap-2.5 mb-3 group">
-          <div className="w-10 h-10 rounded-xl bg-white text-[#0A192F] flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
-            <Sparkles size={20} />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-[#F8FAFC] text-slate-900">
+      {/* Brand Header */}
+      <div className="mb-6 flex flex-col items-center text-center">
+        <Link to="/" className="inline-flex items-center gap-2.5 mb-2 group">
+          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs">
+            <Sparkles size={18} />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-white">ILMP</span>
+          <span className="text-xl font-bold tracking-tight text-slate-900">ILMP</span>
         </Link>
-        <p className="text-xs font-mono uppercase tracking-widest text-slate-300 font-semibold">
-          Unified Internship Lifecycle Platform
+        <p className="text-xs text-slate-500 font-medium">
+          University Internship Lifecycle Management Platform
         </p>
       </div>
 
-      {/* Main Dynamic Morphing Card (Pure White with Deep Navy Typography) */}
-      <motion.div 
-        layout
-        transition={{ type: "spring", stiffness: 350, damping: 30 }}
-        className="w-full max-w-xl bg-white text-[#0A192F] rounded-2xl border border-slate-200 shadow-2xl p-6 sm:p-8 z-10 relative"
-      >
-        {/* A. Segmented Sliding Pill Role Switcher */}
-        <div className="mb-8">
-          <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto">
-            {roles.map((role) => {
+      {/* Main Container Card */}
+      <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-md p-6 sm:p-8 space-y-6">
+        {/* Explicit Demo Environment Disclaimer Banner */}
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900">
+          <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-bold block">Demonstration Environment</span>
+            <span>You're using a demonstration account. Select any role below to explore live workflows.</span>
+          </div>
+        </div>
+
+        {/* Role Selector Tabs */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block">
+            Select Your Role
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+            {roleOptions.map((role) => {
               const isSelected = activeRole === role.id;
               const RoleIcon = role.icon;
 
               return (
                 <button
                   key={role.id}
-                  onClick={() => setActiveRole(role.id)}
                   type="button"
-                  className={`relative flex-1 py-2.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                    isSelected ? 'text-white font-bold' : 'text-slate-600 hover:text-slate-900'
+                  onClick={() => handleRoleChange(role.id)}
+                  className={`py-2 px-2 rounded-lg text-xs font-semibold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/60'
                   }`}
                 >
-                  {isSelected && (
-                    <motion.div
-                      layoutId="activeRoleIndicator"
-                      className="absolute inset-0 bg-[#0A192F] rounded-lg shadow-sm"
-                      transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                    />
-                  )}
-                  <RoleIcon size={14} className="relative z-10" />
-                  <span className="relative z-10">{role.label}</span>
+                  <RoleIcon size={14} className={isSelected ? 'text-[var(--role-accent)]' : 'text-slate-400'} />
+                  <span className="truncate">{role.label}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* B. Dynamic Container Content with AnimatePresence */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeRole}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-6"
+        {/* Selected Role Header Info */}
+        <div className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 bg-slate-50/70">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-xs"
+            style={{ backgroundColor: currentRole.color }}
           >
-            {/* Role Header Banner */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-5">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-xl bg-[#0A192F] text-white flex items-center justify-center shadow-sm flex-shrink-0">
-                  <IconComponent size={24} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold tracking-tight text-[#0A192F]">
-                      {currentRole.heading}
-                    </h2>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-[#0A192F] border border-slate-200">
-                      {currentRole.badge}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {currentRole.subheading}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <IconComponent size={20} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-slate-900 leading-tight truncate">
+              {currentRole.heading}
+            </h2>
+            <p className="text-xs text-slate-500 leading-snug mt-0.5 truncate">
+              {currentRole.subheading}
+            </p>
+          </div>
+        </div>
 
-            {/* Authentication Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-700 block">
-                  {currentRole.identifierLabel}
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    defaultValue={currentRole.defaultEmail}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#0A192F] focus:outline-none transition-all placeholder:text-slate-400 focus:ring-2 focus:ring-[#0A192F] focus:border-transparent"
-                    placeholder={currentRole.identifierPlaceholder}
-                  />
-                </div>
-              </div>
+        {/* Sign In Form */}
+        <form onSubmit={handleSignIn} className="space-y-4">
+          <Input
+            label="Email Address / University ID"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            leftIcon={<Mail size={15} />}
+            required
+          />
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-700 block">
-                    Password / Access Key
-                  </label>
-                  <a href="#" className="text-xs text-slate-500 hover:text-slate-800 transition-colors">
-                    Forgot password?
-                  </a>
-                </div>
-                <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="password"
-                    defaultValue="••••••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#0A192F] focus:outline-none transition-all placeholder:text-slate-400 focus:ring-2 focus:ring-[#0A192F] focus:border-transparent"
-                    placeholder="••••••••••••"
-                  />
-                </div>
-              </div>
-
-              {/* Submit CTA Button (Navy + White) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700">Password</label>
               <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-[#0A192F] hover:bg-[#1E293B] text-white font-bold font-mono text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg cursor-pointer mt-2"
+                type="button"
+                onClick={() => {
+                  setForgotEmail(email);
+                  setForgotStep('email');
+                  setIsForgotModalOpen(true);
+                }}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
               >
-                <span>{currentRole.actionText}</span>
-                <ArrowRight size={14} />
+                Forgot password?
               </button>
-            </form>
-
-            {/* Quick Demo Access Bar */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="font-mono">Demo Credentials Loaded</span>
-              </span>
-              <Link 
-                to={`/sign-in/${activeRole}`} 
-                className="font-medium text-[#0A192F] hover:underline flex items-center gap-1"
-              >
-                <span>Split Screen Login</span>
-                <ArrowRight size={12} />
-              </Link>
             </div>
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
 
-      {/* Bottom Footer Navigation */}
-      <div className="z-10 mt-8 flex items-center gap-6 text-xs text-slate-400 font-medium">
-        <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              leftIcon={<Lock size={15} />}
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="cursor-pointer text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              }
+              required
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <Checkbox
+              label="Remember this device"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            loading={isLoading}
+            rightIcon={<ArrowRight size={15} />}
+          >
+            Enter {currentRole.label} Dashboard
+          </Button>
+        </form>
+
+        {/* Alternative Role View */}
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Need to switch account?</span>
+          <Link to="/sign-up" className="font-semibold text-slate-800 hover:underline">
+            Choose Your Portal
+          </Link>
+        </div>
+      </div>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
+        title="Reset Password"
+        size="sm"
+      >
+        <form onSubmit={handleForgotSubmit} className="space-y-4 text-xs">
+          {forgotStep === 'email' && (
+            <>
+              <p className="text-slate-600 leading-relaxed">
+                Enter your university or company email address and we will send you a 6-digit verification code.
+              </p>
+              <Input
+                label="Email Address"
+                type="email"
+                value={forgotEmail || email}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                required
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" onClick={() => setIsForgotModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" size="sm">
+                  Send Code
+                </Button>
+              </div>
+            </>
+          )}
+
+          {forgotStep === 'code' && (
+            <>
+              <p className="text-slate-600 leading-relaxed">
+                A verification code has been dispatched. Enter the 6-digit code below:
+              </p>
+              <Input label="Verification Code" defaultValue="849201" placeholder="6-digit code" required />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" onClick={() => setForgotStep('email')}>
+                  Back
+                </Button>
+                <Button type="submit" variant="primary" size="sm">
+                  Verify Code
+                </Button>
+              </div>
+            </>
+          )}
+
+          {forgotStep === 'reset' && (
+            <>
+              <p className="text-slate-600 leading-relaxed">Create a new secure password for your account.</p>
+              <Input label="New Password" type="password" defaultValue="newpassword123" required />
+              <Input label="Confirm Password" type="password" defaultValue="newpassword123" required />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="submit" variant="primary" size="sm">
+                  Update Password
+                </Button>
+              </div>
+            </>
+          )}
+
+          {forgotStep === 'done' && (
+            <div className="text-center py-4 space-y-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
+                <CheckCircle2 size={24} />
+              </div>
+              <h4 className="font-bold text-sm text-slate-900">Password Updated</h4>
+              <p className="text-slate-500">You can now sign in with your updated credentials.</p>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full"
+                onClick={() => setIsForgotModalOpen(false)}
+              >
+                Return to Sign In
+              </Button>
+            </div>
+          )}
+        </form>
+      </Modal>
+
+      {/* Footer Navigation */}
+      <div className="mt-6 flex items-center gap-4 text-xs text-slate-400 font-medium">
+        <Link to="/" className="hover:text-slate-700">Platform Home</Link>
         <span>•</span>
-        <Link to="/verify/ILMP-2026-001" className="hover:text-white transition-colors">Verify Certificate</Link>
-        <span>•</span>
-        <Link to="/sign-up" className="hover:text-white transition-colors">Create Account</Link>
+        <Link to="/verify/CERT-2026-001" className="hover:text-slate-700">Verify Credential</Link>
       </div>
     </div>
   );

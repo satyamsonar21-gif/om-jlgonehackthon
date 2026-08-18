@@ -1,320 +1,210 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @layer base {
   :root {
-    --radius: 0.75rem;
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
     --font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+    --font-serif: 'DM Serif Display', Georgia, serif;
+
+    /* Base Neutral Palette */
+    --background: #F8FAFC;
+    --surface: #FFFFFF;
+    --surface-muted: #F1F5F9;
+    --surface-subtle: #F8FAFC;
+    --border: #E2E8F0;
+    --border-subtle: #F1F5F9;
+    --border-strong: #CBD5E1;
     
-    /* Default / Neutral Surfaces */
-    --bg-canvas: #f8fafc;
-    --bg-surface: #ffffff;
-    --bg-surface-hover: #f1f5f9;
-    --border-subtle: rgba(148, 163, 184, 0.2);
-    --border-strong: rgba(148, 163, 184, 0.4);
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --text-subtle: #94a3b8;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --text-subtle: #94A3B8;
 
-    /* Base theme compatibility mapping */
-    --bg: #f8fafc;
-    --surface: #ffffff;
-    --surface-muted: #f1f5f9;
-    --border: rgba(148, 163, 184, 0.2);
-    --text: #0f172a;
-    --primary: #0f172a;
-    --primary-hover: #1e293b;
-    --secondary: #c2410c;
-    --highlights: #c2410c;
-    --accent-soft: #ffedd5;
-    --cta: #c2410c;
-    --cta-hover: #9a3412;
-    --cta-text: #ffffff;
-    --ring-color: rgba(194, 65, 12, 0.4);
-    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    /* Semantic Status Colors */
+    --success: #16A34A;
+    --success-light: #DCFCE7;
+    --success-text: #166534;
+    
+    --warning: #D97706;
+    --warning-light: #FEF3C7;
+    --warning-text: #92400E;
+    
+    --danger: #DC2626;
+    --danger-light: #FEE2E2;
+    --danger-text: #991B1B;
+    
+    --info: #2563EB;
+    --info-light: #DBEAFE;
+    --info-text: #1E40AF;
+
+    /* Default Role Accent (Student fallback) */
+    --role-accent: #D97706;
+    --role-accent-hover: #B45309;
+    --role-accent-light: #FFFBEB;
+    --role-accent-subtle: #FEF3C7;
+    --role-border: #FDE68A;
+    --role-text: #92400E;
+    --role-ring: rgba(217, 119, 6, 0.35);
+
+    /* Legacy compatibility variables */
+    --bg: var(--background);
+    --text: var(--text-primary);
+    --primary: var(--role-accent);
+    --secondary: var(--role-accent);
+    --cta: var(--role-accent);
+    --cta-hover: var(--role-accent-hover);
+    --cta-text: #FFFFFF;
+    --highlights: var(--role-accent);
+    --accent-soft: var(--role-accent-light);
+    --ring-color: var(--role-ring);
   }
 
-  /* 🎓 Student Portal Theme: Slate & Deep Terracotta */
+  /* Role specific overrides */
   [data-role="student"] {
-    --role-primary: #0f172a;
-    --role-primary-foreground: #ffffff;
-    --role-accent: #c2410c; /* Deep terracotta / amber */
-    --role-accent-subtle: #ffedd5;
-    --role-badge-bg: #fed7aa;
-    --role-badge-text: #7c2d12;
-    --ring-focus: rgba(194, 65, 12, 0.4);
-
-    --bg: #f8fafc;
-    --surface: #ffffff;
-    --surface-muted: #ffedd5;
-    --border: rgba(148, 163, 184, 0.25);
-    --text: #0f172a;
-    --text-muted: #64748b;
-    --primary: #0f172a;
-    --primary-hover: #1e293b;
-    --secondary: #c2410c;
-    --highlights: #c2410c;
-    --accent-soft: #ffedd5;
-    --cta: #c2410c;
-    --cta-hover: #9a3412;
-    --cta-text: #ffffff;
-    --ring-color: rgba(194, 65, 12, 0.4);
-    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --role-accent: #D97706;
+    --role-accent-hover: #B45309;
+    --role-accent-light: #FFFBEB;
+    --role-accent-subtle: #FEF3C7;
+    --role-border: #FDE68A;
+    --role-text: #92400E;
+    --role-ring: rgba(217, 119, 6, 0.35);
   }
 
-  /* 👨‍🏫 Faculty Portal Theme: Deep Forest & Emerald */
   [data-role="faculty"] {
-    --role-primary: #064e3b;
-    --role-primary-foreground: #ffffff;
-    --role-accent: #059669; /* Emerald */
-    --role-accent-subtle: #d1fae5;
-    --role-badge-bg: #a7f3d0;
-    --role-badge-text: #065f46;
-    --ring-focus: rgba(5, 150, 105, 0.4);
-
-    --bg: #f4fbf7;
-    --surface: #ffffff;
-    --surface-muted: #d1fae5;
-    --border: rgba(5, 150, 105, 0.22);
-    --text: #064e3b;
-    --text-muted: #065f46;
-    --primary: #064e3b;
-    --primary-hover: #022c22;
-    --secondary: #059669;
-    --highlights: #059669;
-    --accent-soft: #d1fae5;
-    --cta: #059669;
-    --cta-hover: #047857;
-    --cta-text: #ffffff;
-    --ring-color: rgba(5, 150, 105, 0.4);
-    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --role-accent: #059669;
+    --role-accent-hover: #047857;
+    --role-accent-light: #ECFDF5;
+    --role-accent-subtle: #D1FAE5;
+    --role-border: #A7F3D0;
+    --role-text: #065F46;
+    --role-ring: rgba(5, 150, 105, 0.35);
   }
 
-  /* 🏢 Company Portal Theme: Indigo & Obsidian */
   [data-role="company"],
   [data-role="mentor"] {
-    --role-primary: #1e1b4b;
-    --role-primary-foreground: #ffffff;
-    --role-accent: #4f46e5; /* Royal Indigo */
-    --role-accent-subtle: #e0e7ff;
-    --role-badge-bg: #c7d2fe;
-    --role-badge-text: #3730a3;
-    --ring-focus: rgba(79, 70, 229, 0.4);
-
-    --bg: #f8faff;
-    --surface: #ffffff;
-    --surface-muted: #e0e7ff;
-    --border: rgba(79, 70, 229, 0.22);
-    --text: #1e1b4b;
-    --text-muted: #4338ca;
-    --primary: #1e1b4b;
-    --primary-hover: #0f0e26;
-    --secondary: #4f46e5;
-    --highlights: #4f46e5;
-    --accent-soft: #e0e7ff;
-    --cta: #4f46e5;
-    --cta-hover: #4338ca;
-    --cta-text: #ffffff;
-    --ring-color: rgba(79, 70, 229, 0.4);
-    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --role-accent: #4F46E5;
+    --role-accent-hover: #4338CA;
+    --role-accent-light: #EEF2FF;
+    --role-accent-subtle: #E0E7FF;
+    --role-border: #C7D2FE;
+    --role-text: #3730A3;
+    --role-ring: rgba(79, 70, 229, 0.35);
   }
 
-  /* 🛡️ Admin Portal Theme: Midnight Steel & Azure */
   [data-role="admin"] {
-    --role-primary: #0f172a;
-    --role-primary-foreground: #ffffff;
-    --role-accent: #0284c7; /* Sky / Azure */
-    --role-accent-subtle: #e0f2fe;
-    --role-badge-bg: #bae6fd;
-    --role-badge-text: #0369a1;
-    --ring-focus: rgba(2, 132, 199, 0.4);
-
-    --bg: #f8fafc;
-    --surface: #ffffff;
-    --surface-muted: #e0f2fe;
-    --border: rgba(2, 132, 199, 0.22);
-    --text: #0f172a;
-    --text-muted: #0369a1;
-    --primary: #0f172a;
-    --primary-hover: #0284c7;
-    --secondary: #0284c7;
-    --highlights: #0284c7;
-    --accent-soft: #e0f2fe;
-    --cta: #0284c7;
-    --cta-hover: #0369a1;
-    --cta-text: #ffffff;
-    --ring-color: rgba(2, 132, 199, 0.4);
-    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    --font-body: 'Inter', sans-serif;
-  }
-
-  /* Dark Mode Adjustments */
-  .dark,
-  [data-theme="dark"] {
-    --bg-canvas: #090d16;
-    --bg-surface: #111827;
-    --bg-surface-hover: #1e293b;
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.16);
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --text-subtle: #64748b;
-
-    --bg: #090d16;
-    --surface: #111827;
-    --surface-muted: #1e293b;
-    --border: rgba(255, 255, 255, 0.08);
-    --text: #f8fafc;
+    --role-accent: #0284C7;
+    --role-accent-hover: #0369A1;
+    --role-accent-light: #F0F9FF;
+    --role-accent-subtle: #E0F2FE;
+    --role-border: #BAE6FD;
+    --role-text: #075985;
+    --role-ring: rgba(2, 132, 199, 0.35);
   }
 }
 
-/* 1. Global Typography & Font Rules */
+/* 1. Global Typography and Document Settings */
 html {
-  font-family: var(--font-body, 'Inter', sans-serif);
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--text-primary);
   scroll-behavior: smooth;
-  background-color: var(--bg, #f8fafc);
 }
 
 body {
-  background-color: var(--bg, #f8fafc);
-  color: var(--text, #0f172a);
-  font-family: var(--font-body, 'Inter', sans-serif);
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
-/* Headings automatically use unified clean sans display typeface */
-h1, h2, h3, .font-display {
-  font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
-/* Explicit font family utility classes */
-.font-inter {
-  font-family: 'Inter', sans-serif;
-}
-.font-jakarta {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
-/* Reserved strictly for digital certificates */
-.font-dm-serif, .certificate-serif {
-  font-family: 'DM Serif Display', Georgia, serif;
-}
 .font-mono {
-  font-family: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
-/* Strict Type Tracking */
-.tracking-tight-display {
-  letter-spacing: -0.025em;
-}
-.tracking-tight-section {
-  letter-spacing: -0.015em;
-}
-.tracking-badge {
-  letter-spacing: 0.025em;
+.font-serif {
+  font-family: var(--font-serif);
 }
 
-/* 2. Reusable Modern Elevation & Micro-Interaction Classes */
-.card-modern {
-  background-color: var(--bg-surface, var(--surface, #ffffff));
-  border: 1px solid var(--border-subtle, var(--border, rgba(148, 163, 184, 0.2)));
-  border-radius: var(--radius, 0.75rem);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+/* 2. WCAG 2.2 Accessible Focus Rings */
+:focus-visible {
+  outline: 2px solid var(--role-accent, #2563EB);
+  outline-offset: 2px;
 }
 
-.card-modern:hover {
-  border-color: var(--border-strong, rgba(148, 163, 184, 0.4));
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06);
+button:focus-visible, 
+a:focus-visible, 
+input:focus-visible, 
+select:focus-visible, 
+textarea:focus-visible {
+  outline: 2px solid var(--role-accent, #2563EB);
+  outline-offset: 2px;
 }
 
-.card-elevated {
-  background-color: var(--surface, #ffffff);
-  border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
-  border-radius: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 
-              0 4px 8px -2px rgba(0, 0, 0, 0.02);
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+/* 3. Reduced Motion Accessibility Reset */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-.card-elevated:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 
-              0 12px 20px -3px rgba(0, 0, 0, 0.05);
+/* 4. Standard Reusable UI Classes */
+.card-base {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem; /* 12px */
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-base:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06);
 }
 
 .btn-primary {
-  background-color: var(--role-accent, var(--cta, #c2410c));
-  color: #ffffff;
-  font-weight: 500;
-  border-radius: 0.5rem;
+  background-color: var(--role-accent);
+  color: #FFFFFF;
+  font-weight: 600;
+  border-radius: 0.5rem; /* 8px */
   padding: 0.5rem 1rem;
-  transition: all 0.12s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  transition: all 0.15s ease;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.08);
-  transform: translateY(-0.5px);
+  background-color: var(--role-accent-hover);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
 }
 
 .btn-primary:active {
   transform: scale(0.98);
 }
 
-.btn-cta {
-  background-color: var(--cta, var(--role-accent));
-  color: var(--cta-text, #ffffff);
-  font-weight: 700;
-  border-radius: 0.75rem;
-  padding: 0.625rem 1.25rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
-  transition: all 160ms ease;
-}
-
-.btn-cta:hover {
-  background-color: var(--cta-hover, var(--role-accent));
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
-}
-
-.btn-cta:active {
-  transform: scale(0.98);
-}
-
-.tabular-numbers {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-}
-
-/* Form focus states */
-input, textarea, select {
-  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
-}
-
-input:focus, textarea:focus, select:focus, .input-focus-ring:focus {
-  outline: none;
-  border-color: var(--role-accent, var(--primary)) !important;
-  box-shadow: 0 0 0 3px var(--ring-color, var(--ring-focus, rgba(194, 65, 12, 0.3))) !important;
-}
-
-/* Custom Scrollbar */
+/* 5. Clean Subtle Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: var(--background);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);

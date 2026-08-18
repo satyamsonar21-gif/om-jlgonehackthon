@@ -1,213 +1,122 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useOutletContext } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
-import { GraduationCap, Upload, Save, CheckCircle2, User, Mail, Phone, MapPin, Building2, Check, ExternalLink } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { Input, Textarea } from '@/components/ui/Input';
+import { User, Mail, Phone, MapPin, GraduationCap, Globe, ExternalLink, Save, Award } from 'lucide-react';
 import { toast } from 'sonner';
 
-const initialSkills = ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'TailwindCSS', 'Git', 'REST APIs', 'Docker', 'Zustand'];
-
 export default function ProfilePage() {
-  const [skills, setSkills] = useState(initialSkills);
-  const [newSkill, setNewSkill] = useState('');
-  const [saved, setSaved] = useState(false);
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
 
-  const addSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()]);
-      setNewSkill('');
-      toast.success(`Skill "${newSkill.trim()}" added to verified dossier`);
-    }
-  };
-
-  const removeSkill = (skillToRemove: string) => {
-    setSkills(skills.filter(s => s !== skillToRemove));
-    toast.info(`Removed "${skillToRemove}" from skills`);
-  };
+  const [name, setName] = useState('Priya Sharma');
+  const [email, setEmail] = useState('priya.sharma@college.edu');
+  const [phone, setPhone] = useState('+91 98765 43210');
+  const [bio, setBio] = useState('3rd Year Computer Science student passionate about distributed systems, React, and cloud microservices.');
+  const [github, setGithub] = useState('https://github.com/priyasharma');
+  const [linkedin, setLinkedin] = useState('https://linkedin.com/in/priyasharma');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    toast.success('Student profile & academic contact records updated successfully!');
-    setTimeout(() => setSaved(false), 3000);
+    toast.success('Profile dossier updated successfully!');
   };
 
   return (
-    <div className="min-h-full pb-16" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-      <Header title="Student Profile & Dossier" subtitle="Manage academic records, contact info, verified technical skills, and resume links" />
-      
-      <main className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
-        {/* Profile Card Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 12 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border shadow-sm p-6 flex flex-col sm:flex-row items-center sm:items-start gap-5"
-          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-        >
-          <div 
-            className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black shadow-xs border flex-shrink-0"
-            style={{
-              backgroundColor: 'var(--accent-soft)',
-              color: 'var(--role-accent, var(--cta))',
-              borderColor: 'var(--border)'
-            }}
-          >
-            PS
-          </div>
+    <div className="min-h-full pb-16 bg-[#F8FAFC]">
+      <Header
+        title="Student Profile"
+        subtitle="Manage academic profile details, verified skill tags, and contact information"
+        onOpenMobileNav={onOpenMobileNav}
+      />
 
-          <div className="flex-1 text-center sm:text-left space-y-1">
-            <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
-              <h2 className="text-xl font-bold" style={{ color: 'var(--text)' }}>Priya Sharma</h2>
-              <span 
-                className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border"
-                style={{
-                  backgroundColor: 'var(--accent-soft)',
-                  color: 'var(--role-accent, var(--cta))',
-                  borderColor: 'var(--border)'
-                }}
-              >
-                20CS101 · Tier-1 CSE
-              </span>
-            </div>
-            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              B.Tech Computer Science & Engineering · 3rd Year (Term 6)
-            </p>
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-mono pt-1" style={{ color: 'var(--text-muted)' }}>
-              <span>CGPA: 8.7 / 10.0</span>
-              <span>•</span>
-              <span>Host: TechCorp Solutions</span>
-              <span>•</span>
-              <span>Faculty Guide: Dr. Rajesh Kumar</span>
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        {/* Profile Card */}
+        <Card className="p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+            <div className="flex items-center gap-4">
+              <Avatar name="Priya Sharma" size="xl" />
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">{name}</h1>
+                <div className="text-xs text-slate-500 font-mono mt-0.5">
+                  Roll: 20CS101 · Dept. of Computer Science & Engineering
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant="success" size="sm">Active Intern</Badge>
+                  <span className="text-xs font-mono font-bold text-slate-700">CGPA: 8.9</span>
+                </div>
+              </div>
             </div>
           </div>
-        </motion.div>
 
-        {/* Edit Details Form */}
-        <form onSubmit={handleSave} className="rounded-2xl border shadow-sm p-6 space-y-6" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <div className="border-b pb-3 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Personal & Academic Contact Details</h3>
-            <span className="text-xs font-mono font-semibold" style={{ color: 'var(--role-accent, var(--cta))' }}>Enrollment Verified</span>
-          </div>
+          <form onSubmit={handleSave} className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Full Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                leftIcon={<User size={15} />}
+                required
+              />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                Official University Email
-              </label>
-              <input 
-                type="email" 
-                defaultValue="priya.sharma@college.edu" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+              <Input
+                label="University Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                leftIcon={<Mail size={15} />}
+                required
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                Contact Mobile
-              </label>
-              <input 
-                type="text" 
-                defaultValue="+91 98765 43210" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Contact Phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                leftIcon={<Phone size={15} />}
+              />
+
+              <Input
+                label="Department & Specialization"
+                defaultValue="Computer Science & Engineering (Tier-1)"
+                disabled
+                leftIcon={<GraduationCap size={15} />}
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                GitHub Profile URL
-              </label>
-              <input 
-                type="text" 
-                defaultValue="https://github.com/priyasharma" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="GitHub Profile URL"
+                value={github}
+                onChange={(e) => setGithub(e.target.value)}
+                leftIcon={<Globe size={15} />}
+              />
+
+              <Input
+                label="LinkedIn Profile URL"
+                value={linkedin}
+                onChange={(e) => setLinkedin(e.target.value)}
+                leftIcon={<Globe size={15} />}
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                LinkedIn Profile URL
-              </label>
-              <input 
-                type="text" 
-                defaultValue="https://linkedin.com/in/priyasharma" 
-                className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
-              />
-            </div>
-          </div>
+            <Textarea
+              label="Bio / Technical Statement"
+              rows={3}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+            />
 
-          {/* Technical Skills Tags */}
-          <div className="space-y-3 pt-2">
-            <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-              Verified Technical Skill Tags
-            </label>
-            
-            <div className="flex flex-wrap gap-2">
-              {skills.map(s => (
-                <span 
-                  key={s} 
-                  className="px-3 py-1 rounded-xl text-xs font-mono font-semibold border flex items-center gap-1.5"
-                  style={{
-                    backgroundColor: 'var(--accent-soft)',
-                    color: 'var(--role-accent, var(--cta))',
-                    borderColor: 'var(--border)'
-                  }}
-                >
-                  <span>{s}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => removeSkill(s)} 
-                    className="hover:text-rose-600 font-bold ml-1 cursor-pointer"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <Button type="submit" variant="primary" size="md" leftIcon={<Save size={14} />}>
+                Save Changes
+              </Button>
             </div>
-
-            <div className="flex gap-2 max-w-sm pt-1">
-              <input
-                type="text"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                placeholder="Add new skill (e.g. Docker)..."
-                className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl px-3 py-2 text-xs focus:outline-none"
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
-              />
-              <button
-                type="button"
-                onClick={addSkill}
-                className="px-4 py-2 rounded-xl text-white text-xs font-bold font-mono tracking-wider uppercase cursor-pointer"
-                style={{ backgroundColor: 'var(--cta)' }}
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t flex justify-end" style={{ borderColor: 'var(--border)' }}>
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl text-white text-xs font-bold font-mono tracking-wider uppercase transition-all shadow-md flex items-center gap-2 cursor-pointer hover:scale-105"
-              style={{ backgroundColor: 'var(--cta)' }}
-            >
-              {saved ? (
-                <>
-                  <Check size={14} />
-                  <span>Profile Saved</span>
-                </>
-              ) : (
-                <>
-                  <Save size={14} />
-                  <span>Save Changes</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </main>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }
