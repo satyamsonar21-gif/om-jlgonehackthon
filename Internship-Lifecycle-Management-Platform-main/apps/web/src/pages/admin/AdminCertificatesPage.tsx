@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
@@ -6,107 +6,143 @@ import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { Input, Select } from '@/components/ui/Input';
-import { Award, ShieldCheck, ExternalLink, Plus, Check } from 'lucide-react';
+import { Award, ShieldCheck, ExternalLink, Plus, Check, Loader2, QrCode } from 'lucide-react';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
-
-interface CertificateRecord {
-  id: string;
-  certCode: string;
-  studentName: string;
-  studentRoll: string;
-  company: string;
-  issueDate: string;
-  grade: string;
-  status: 'ISSUED' | 'PENDING_SIGNATURE';
-}
-
-const initialCertificates: CertificateRecord[] = [
-  { id: '1', certCode: 'CERT-2026-001', studentName: 'Priya Sharma', studentRoll: '20CS101', company: 'TechCorp Solutions', issueDate: 'Jul 28, 2026', grade: 'A+', status: 'ISSUED' },
-  { id: '2', certCode: 'CERT-2026-002', studentName: 'Rahul Patel', studentRoll: '20CS102', company: 'Innovatech Labs', issueDate: 'Jul 28, 2026', grade: 'A', status: 'ISSUED' },
-  { id: '3', certCode: 'CERT-2026-003', studentName: 'Sneha Gupta', studentRoll: '20CS106', company: 'Creative Studio Inc', issueDate: 'Jul 27, 2026', grade: 'A+', status: 'ISSUED' },
-  { id: '4', certCode: 'CERT-2026-004', studentName: 'Amit Kumar', studentRoll: '20CS105', company: 'TechCorp Solutions', issueDate: 'Jul 26, 2026', grade: 'A', status: 'ISSUED' },
-  { id: '5', certCode: 'CERT-2026-005', studentName: 'Vikram Singh', studentRoll: '20CS104', company: 'Global Logistics IT', issueDate: 'Pending', grade: 'B', status: 'PENDING_SIGNATURE' },
-];
 
 export default function AdminCertificatesPage() {
   const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
 
-  const [certificates, setCertificates] = useState<CertificateRecord[]>(initialCertificates);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [internships, setInternships] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
-  const [newStudent, setNewStudent] = useState('Deepak Nair (20CS107)');
-  const [newCompany, setNewCompany] = useState('CyberShield Security');
-  const [newGrade, setNewGrade] = useState('A');
+  const [selectedInternshipId, setSelectedInternshipId] = useState('');
+  const [acting, setActing] = useState(false);
+  const [previewCert, setPreviewCert] = useState<any | null>(null);
 
-  const handleIssueCertificate = (e: React.FormEvent) => {
+  const fetchCertificates = async () => {
+    setLoading(true);
+    try {
+      const [certRes, internRes] = await Promise.allSettled([
+        api.getCertificates(),
+        api.getInternships(),
+      ]);
+
+      if (certRes.status === 'fulfilled') {
+        setCertificates(certRes.value.data || []);
+      }
+      if (internRes.status === 'fulfilled') {
+        setInternships(internRes.value.data || []);
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCertificates();
+  }, []);
+
+  const handleGenerateCertificate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedInternshipId) {
+      toast.error('Please select an internship');
+      return;
+    }
 
-    const newCert: CertificateRecord = {
-      id: String(Date.now()),
-      certCode: `CERT-2026-${String(certificates.length + 1).padStart(3, '0')}`,
-      studentName: newStudent.split(' (')[0],
-      studentRoll: newStudent.split('(')[1]?.replace(')', '') || '20CS107',
-      company: newCompany,
-      issueDate: 'Today, Jul 28, 2026',
-      grade: newGrade,
-      status: 'ISSUED',
-    };
-
-    setCertificates([newCert, ...certificates]);
-    setIsIssueModalOpen(false);
-    toast.success(`Cryptographic Certificate ${newCert.certCode} issued successfully!`);
+    setActing(true);
+    try {
+      const res = await api.generateCertificate(selectedInternshipId, true);
+      toast.success(`Cryptographic Certificate ${res.data?.certificate?.certificateNumber} issued successfully!`);
+      await fetchCertificates();
+      setIsIssueModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to issue certificate');
+    } finally {
+      setActing(false);
+    }
   };
 
   const columns = [
     {
       key: 'certCode',
-      header: 'Certificate ID',
-      render: (row: CertificateRecord) => (
-        <span className="font-mono font-bold text-slate-900 text-xs">{row.certCode}</span>
+      header: 'Certificate ID & Verification Hash',
+      sortable: true,
+      render: (row: any) => (
+        <div>
+          <div className="font-mono font-bold text-slate-900">{row.certificateNumber}</div>
+          <div className="text-[10px] font-mono text-slate-400 truncate max-w-xs">
+            {row.verificationHash}
+          </div>
+        </div>
       ),
     },
     {
-      key: 'studentName',
+      key: 'student',
       header: 'Recipient Student',
       sortable: true,
-      render: (row: CertificateRecord) => (
+      render: (row: any) => (
         <div>
-          <div className="font-bold text-slate-900">{row.studentName}</div>
-          <div className="text-[11px] font-mono text-slate-400">{row.studentRoll}</div>
+          <div className="font-bold text-slate-800">{row.internship?.student?.user?.name || 'Aarav Patil'}</div>
+          <div className="text-[11px] font-mono text-slate-400">
+            {row.internship?.student?.studentId || 'IT22B042'} · {row.internship?.student?.department || 'IT'}
+          </div>
         </div>
       ),
     },
     {
       key: 'company',
       header: 'Host Organization',
-      render: (row: CertificateRecord) => <span className="text-slate-700 font-medium">{row.company}</span>,
+      sortable: true,
+      render: (row: any) => (
+        <div>
+          <div className="font-semibold text-slate-800">{row.internship?.company?.name || 'TechNova'}</div>
+          <div className="text-[11px] text-slate-500">{row.internship?.application?.listing?.title || 'Full Stack'}</div>
+        </div>
+      ),
     },
     {
-      key: 'grade',
-      header: 'Grade',
-      render: (row: CertificateRecord) => (
-        <span className="font-mono font-bold text-emerald-700">{row.grade}</span>
+      key: 'issuedAt',
+      header: 'Issue Date',
+      render: (row: any) => (
+        <span className="font-mono text-xs text-slate-700">
+          {new Date(row.issuedAt).toLocaleDateString()}
+        </span>
       ),
     },
     {
       key: 'status',
       header: 'Status',
-      render: (row: CertificateRecord) => (
-        <Badge variant={row.status === 'ISSUED' ? 'success' : 'warning'} size="sm">
-          {row.status === 'ISSUED' ? 'Ed25519 Signed' : 'Pending Signature'}
+      render: (row: any) => (
+        <Badge variant={row.isRevoked ? 'destructive' : 'success'}>
+          {row.isRevoked ? 'REVOKED' : 'ISSUED & VERIFIED'}
         </Badge>
       ),
     },
     {
       key: 'actions',
-      header: 'Verification Link',
-      align: 'right' as const,
-      render: (row: CertificateRecord) => (
-        <Link to={`/verify/${row.certCode}`}>
-          <Button variant="outline" size="sm" rightIcon={<ExternalLink size={12} />}>
-            Verify
+      header: 'Public Verification',
+      render: (row: any) => (
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPreviewCert(row)}
+            className="text-xs h-7 px-2"
+          >
+            <QrCode size={12} className="mr-1" />
+            <span>QR</span>
           </Button>
-        </Link>
+          <Link to={`/verify/${row.certificateNumber}`} target="_blank">
+            <Button size="sm" variant="outline" className="text-xs h-7 px-2 font-semibold text-blue-600 gap-1">
+              <span>Verify</span>
+              <ExternalLink size={12} />
+            </Button>
+          </Link>
+        </div>
       ),
     },
   ];
@@ -114,85 +150,121 @@ export default function AdminCertificatesPage() {
   return (
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
-        title="Cryptographic Certificate Registry"
-        subtitle="Issue and manage tamper-proof university internship completion credentials"
+        title="Institutional Certificate Registry"
+        subtitle="Manage cryptographic completion credentials, SHA-256 verification hashes, and public registry"
         onOpenMobileNav={onOpenMobileNav}
       />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Certificate Registry</h2>
-            <p className="text-xs text-slate-500 font-mono">923 total verifiable certificates on university ledger</p>
+        <Card className="p-4 sm:p-6 border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Official Issued Credentials</h3>
+              <p className="text-xs text-slate-500">Live records from institutional cryptographic ledger</p>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={() => setIsIssueModalOpen(true)}
+              className="bg-[var(--role-accent)] text-white hover:opacity-90 font-semibold gap-1.5 self-start sm:self-auto"
+            >
+              <Plus size={14} />
+              <span>Issue New Certificate</span>
+            </Button>
           </div>
 
-          <Button
-            variant="primary"
-            size="sm"
-            className="bg-sky-600 hover:bg-sky-700"
-            onClick={() => setIsIssueModalOpen(true)}
-            leftIcon={<Plus size={14} />}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="animate-spin text-blue-600" size={32} />
+              <p className="text-xs text-slate-500 mt-2">Loading certificate ledger...</p>
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={certificates}
+              searchPlaceholder="Search certificates by code, student name, PRN, or company..."
+            />
+          )}
+        </Card>
+
+        {/* Issue Certificate Modal */}
+        {isIssueModalOpen && (
+          <Modal
+            isOpen={isIssueModalOpen}
+            onClose={() => setIsIssueModalOpen(false)}
+            title="Issue Completion Certificate"
           >
-            Issue Certificate
-          </Button>
-        </div>
+            <form onSubmit={handleGenerateCertificate} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Select Completed Internship Enrollment
+                </label>
+                <select
+                  value={selectedInternshipId}
+                  onChange={(e) => setSelectedInternshipId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                >
+                  <option value="">-- Select Candidate --</option>
+                  {internships.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.student?.user?.name} ({i.student?.studentId}) — {i.company?.name} ({i.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-        <DataTable
-          columns={columns}
-          data={certificates}
-          searchKey="studentName"
-          searchPlaceholder="Search certificates by student name, PRN, or code..."
-        />
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1 text-slate-700">
+                <p className="font-bold text-blue-900 flex items-center gap-1">
+                  <ShieldCheck size={14} />
+                  <span>Cryptographic Gatekeeper</span>
+                </p>
+                <p className="text-[11px]">
+                  Generating the certificate will calculate a unique SHA-256 hash and dynamic QR verification URL.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button type="button" variant="outline" onClick={() => setIsIssueModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={acting} className="gap-1.5 font-semibold">
+                  {acting && <Loader2 size={14} className="animate-spin" />}
+                  <span>Sign & Issue Certificate</span>
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* QR Code Preview Modal */}
+        {previewCert && (
+          <Modal
+            isOpen={Boolean(previewCert)}
+            onClose={() => setPreviewCert(null)}
+            title={`Credential QR: ${previewCert.certificateNumber}`}
+          >
+            <div className="flex flex-col items-center text-center space-y-4 py-3">
+              {previewCert.qrCode && (
+                <img
+                  src={previewCert.qrCode}
+                  alt="QR Code"
+                  className="w-48 h-48 rounded-xl border border-slate-200 p-2 bg-white shadow-xs"
+                />
+              )}
+              <div className="space-y-1">
+                <p className="font-bold text-slate-900">{previewCert.internship?.student?.user?.name}</p>
+                <p className="font-mono text-xs text-slate-500">{previewCert.certificateNumber}</p>
+                <p className="font-mono text-[10px] text-slate-400 break-all max-w-sm">
+                  {previewCert.verificationHash}
+                </p>
+              </div>
+              <Link to={`/verify/${previewCert.certificateNumber}`} target="_blank" className="w-full">
+                <Button className="w-full text-xs font-semibold">Open Public Verification URL</Button>
+              </Link>
+            </div>
+          </Modal>
+        )}
       </div>
-
-      {/* Issue Certificate Modal */}
-      <Modal
-        isOpen={isIssueModalOpen}
-        onClose={() => setIsIssueModalOpen(false)}
-        title="Issue Digitally Signed Certificate"
-        size="md"
-      >
-        <form onSubmit={handleIssueCertificate} className="space-y-4 text-xs">
-          <Input
-            label="Student Name & Roll"
-            value={newStudent}
-            onChange={(e) => setNewStudent(e.target.value)}
-            required
-          />
-
-          <Input
-            label="Host Organization"
-            value={newCompany}
-            onChange={(e) => setNewCompany(e.target.value)}
-            required
-          />
-
-          <Select
-            label="Graduating Academic Grade"
-            value={newGrade}
-            onChange={(e) => setNewGrade(e.target.value)}
-            options={[
-              { label: 'Grade A+ (Distinction)', value: 'A+' },
-              { label: 'Grade A (First Class with Distinction)', value: 'A' },
-              { label: 'Grade B+ (First Class)', value: 'B+' },
-              { label: 'Grade B (Pass)', value: 'B' },
-            ]}
-          />
-
-          <div className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-[11px] leading-relaxed">
-            <span className="font-bold">Cryptographic Key:</span> This certificate will be stamped with university master key and given a public QR verification URL.
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button variant="secondary" size="sm" onClick={() => setIsIssueModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" className="bg-sky-600 hover:bg-sky-700" leftIcon={<ShieldCheck size={14} />}>
-              Authorize & Sign
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }

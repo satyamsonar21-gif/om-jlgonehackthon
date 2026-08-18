@@ -6,6 +6,7 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main",
+    "test": "ts-node test/e2e_verification.ts",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {

@@ -5,6 +5,8 @@ export type StatusType =
   | 'success'
   | 'warning'
   | 'danger'
+  | 'destructive'
+  | 'outline'
   | 'info'
   | 'neutral'
   | 'approved'
@@ -71,6 +73,12 @@ const statusStyles: Record<StatusType, { bg: string; text: string; border: strin
     border: 'border-rose-200',
     dot: 'bg-rose-500',
   },
+  destructive: {
+    bg: 'bg-rose-50',
+    text: 'text-rose-800',
+    border: 'border-rose-200',
+    dot: 'bg-rose-500',
+  },
   rejected: {
     bg: 'bg-rose-50',
     text: 'text-rose-800',
@@ -99,6 +107,12 @@ const statusStyles: Record<StatusType, { bg: string; text: string; border: strin
     bg: 'bg-slate-50',
     text: 'text-slate-700',
     border: 'border-slate-200',
+    dot: 'bg-slate-400',
+  },
+  outline: {
+    bg: 'bg-white',
+    text: 'text-slate-700',
+    border: 'border-slate-300',
     dot: 'bg-slate-400',
   },
 };

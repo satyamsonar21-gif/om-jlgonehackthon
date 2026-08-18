@@ -20,6 +20,7 @@ import { Input, Checkbox } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { RoleKey } from '@/design-system/tokens';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth';
 
 interface RoleOption {
   id: RoleKey;
@@ -81,9 +82,10 @@ const roleOptions: RoleOption[] = [
 ];
 
 export default function SignInPage() {
+  const { switchRole, login } = useAuth();
   const [activeRole, setActiveRole] = useState<RoleKey>('student');
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('priya.sharma@college.edu');
+  const [email, setEmail] = useState('aarav.patil@ghrce.edu');
   const [password, setPassword] = useState('demo123456');
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,23 +99,28 @@ export default function SignInPage() {
   const currentRole = roleOptions.find((r) => r.id === activeRole) || roleOptions[0];
   const IconComponent = currentRole.icon;
 
-  const handleRoleChange = (roleId: RoleKey) => {
+  const handleRoleChange = async (roleId: RoleKey) => {
     setActiveRole(roleId);
+    await switchRole(roleId);
     const chosen = roleOptions.find((r) => r.id === roleId);
     if (chosen) {
       setEmail(chosen.defaultEmail);
     }
   };
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await switchRole(activeRole);
       toast.success(`Signed in successfully as ${currentRole.label}`);
       navigate(currentRole.targetPath);
-    }, 400);
+    } catch {
+      navigate(currentRole.targetPath);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleForgotSubmit = (e: React.FormEvent) => {

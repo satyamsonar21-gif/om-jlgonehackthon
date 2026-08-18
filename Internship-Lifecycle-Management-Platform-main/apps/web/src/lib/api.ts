@@ -7,10 +7,30 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Automatically inject stored role and token into request headers
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ilmp_token');
+  const role = localStorage.getItem('ilmp_active_role') || 'student';
+  const userId = localStorage.getItem('ilmp_user_id');
+
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (role) {
+    config.headers['x-demo-role'] = role;
+  }
+  if (userId) {
+    config.headers['x-demo-user-id'] = userId;
+  }
+  return config;
+});
+
 export function setAuthToken(token: string | null) {
   if (token) {
+    localStorage.setItem('ilmp_token', token);
     apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   } else {
+    localStorage.removeItem('ilmp_token');
     delete apiClient.defaults.headers.common['Authorization'];
   }
 }
@@ -19,23 +39,33 @@ export function setAuthToken(token: string | null) {
 
 export const api = {
   // Auth
+  login: (email: string) => apiClient.post('/auth/login', { email }),
+  getDemoUsers: () => apiClient.get('/auth/demo-users'),
+  switchRole: (role: string) => apiClient.post('/auth/switch-role', { role }),
   syncUser: (data: any) => apiClient.post('/auth/sync-user', data),
   getMe: () => apiClient.get('/auth/me'),
 
   // Students
-  getStudents: () => apiClient.get('/students'),
+  getStudents: (params?: any) => apiClient.get('/students', { params }),
   getStudent: (id: string) => apiClient.get(`/students/${id}`),
   updateStudent: (id: string, data: any) => apiClient.patch(`/students/${id}`, data),
+  verifyStudentProfile: (id: string, data: any) => apiClient.patch(`/students/${id}/verify`, data),
+
+  // Eligibility
+  checkEligibility: (studentId: string, listingId: string) =>
+    apiClient.get(`/eligibility/check/${studentId}/${listingId}`),
 
   // Faculty
   getFaculty: () => apiClient.get('/faculty'),
+  getFacultyOne: (id: string) => apiClient.get(`/faculty/${id}`),
   getFacultyStudents: (id: string) => apiClient.get(`/faculty/${id}/students`),
 
   // Companies
-  getCompanies: () => apiClient.get('/companies'),
+  getCompanies: (params?: any) => apiClient.get('/companies', { params }),
   getCompany: (id: string) => apiClient.get(`/companies/${id}`),
   createCompany: (data: any) => apiClient.post('/companies', data),
-  verifyCompany: (id: string) => apiClient.patch(`/companies/${id}/verify`),
+  updateCompany: (id: string, data: any) => apiClient.patch(`/companies/${id}`, data),
+  verifyCompany: (id: string, data?: any) => apiClient.patch(`/companies/${id}/verify`, data || { status: 'VERIFIED' }),
 
   // Listings
   getListings: (params?: any) => apiClient.get('/listings', { params }),
@@ -48,13 +78,16 @@ export const api = {
   createApplication: (data: any) => apiClient.post('/applications', data),
   getApplications: (params?: any) => apiClient.get('/applications', { params }),
   getApplication: (id: string) => apiClient.get(`/applications/${id}`),
+  updateApplicationStatus: (id: string, data: any) => apiClient.patch(`/applications/${id}/status`, data),
   facultyReview: (id: string, data: any) => apiClient.patch(`/applications/${id}/faculty-review`, data),
   companyReview: (id: string, data: any) => apiClient.patch(`/applications/${id}/company-review`, data),
 
   // Internships
   getInternships: (params?: any) => apiClient.get('/internships', { params }),
   getInternship: (id: string) => apiClient.get(`/internships/${id}`),
-  completeInternship: (id: string) => apiClient.patch(`/internships/${id}/complete`),
+  confirmJoining: (id: string, data: any) => apiClient.post(`/internships/${id}/join`, data),
+  updateInternship: (id: string, data: any) => apiClient.patch(`/internships/${id}`, data),
+  completeInternship: (id: string, data?: any) => apiClient.patch(`/internships/${id}/complete`, data || {}),
 
   // Attendance
   markAttendance: (data: any) => apiClient.post('/attendance', data),
@@ -64,12 +97,13 @@ export const api = {
   // Daily Logs
   createDailyLog: (data: any) => apiClient.post('/daily-logs', data),
   getDailyLogs: (internshipId: string) => apiClient.get(`/daily-logs/${internshipId}`),
-  acknowledgelog: (id: string) => apiClient.patch(`/daily-logs/${id}/acknowledge`),
+  acknowledgeLog: (id: string) => apiClient.patch(`/daily-logs/${id}/acknowledge`),
 
   // Weekly Reports
   createWeeklyReport: (data: any) => apiClient.post('/weekly-reports', data),
   getWeeklyReports: (internshipId: string) => apiClient.get(`/weekly-reports/${internshipId}`),
-  getPendingReports: (facultyId: string) => apiClient.get(`/weekly-reports/pending/${facultyId}`),
+  getPendingReports: (facultyId?: string) =>
+    facultyId ? apiClient.get(`/weekly-reports/pending/${facultyId}`) : apiClient.get('/weekly-reports/pending'),
   reviewReport: (id: string, data: any) => apiClient.patch(`/weekly-reports/${id}/review`, data),
 
   // Feedback
@@ -82,9 +116,30 @@ export const api = {
   updateTask: (id: string, data: any) => apiClient.patch(`/tasks/${id}`, data),
 
   // Certificates
-  generateCertificate: (internshipId: string) => apiClient.post(`/certificates/${internshipId}/generate`),
+  getCertificates: () => apiClient.get('/certificates'),
+  generateCertificate: (internshipId: string, force: boolean = false) =>
+    apiClient.post(`/certificates/${internshipId}/generate`, { force }),
   getCertificate: (internshipId: string) => apiClient.get(`/certificates/${internshipId}`),
   verifyCertificate: (code: string) => apiClient.get(`/certificates/verify/${code}`),
+
+  // PPO
+  createPPO: (data: any) => apiClient.post('/ppo', data),
+  getPPOs: (params?: any) => apiClient.get('/ppo', { params }),
+  respondPPO: (id: string, data: any) => apiClient.patch(`/ppo/${id}/respond`, data),
+
+  // Documents & Uploads
+  uploadResume: (file: any, studentId?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (studentId) formData.append('studentId', studentId);
+    return apiClient.post('/uploads/resume', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  createDocument: (data: any) => apiClient.post('/uploads/document', data),
+  getDocuments: (params?: any) => apiClient.get('/uploads/documents', { params }),
+  verifyDocument: (id: string, data: any) => apiClient.patch(`/uploads/documents/${id}/verify`, data),
+  getDocumentChecklist: (internshipId: string) => apiClient.get(`/uploads/checklist/${internshipId}`),
 
   // Analytics
   getAdminAnalytics: () => apiClient.get('/analytics/admin'),
@@ -93,12 +148,24 @@ export const api = {
   getCompanyAnalytics: (id: string) => apiClient.get(`/analytics/company/${id}`),
 
   // Notifications
+  getMyNotifications: () => apiClient.get('/notifications'),
   getNotifications: (userId: string) => apiClient.get(`/notifications/${userId}`),
   markRead: (id: string) => apiClient.patch(`/notifications/${id}/read`),
-  markAllRead: (userId: string) => apiClient.patch(`/notifications/${userId}/read-all`),
+  markAllRead: (userId?: string) =>
+    userId ? apiClient.patch(`/notifications/${userId}/read-all`) : apiClient.patch('/notifications/read-all'),
 
-  // AI
+  // AI Innovation
+  matchInternships: (studentId?: string) =>
+    studentId ? apiClient.get(`/ai/match-internships/${studentId}`) : apiClient.get('/ai/match-internships'),
+  analyzeSkillGap: (studentId?: string) =>
+    studentId ? apiClient.get(`/ai/skill-gap/${studentId}`) : apiClient.get('/ai/skill-gap'),
   reviewResume: (resumeText: string) => apiClient.post('/ai/review-resume', { resumeText }),
   summarizeReport: (report: any) => apiClient.post('/ai/summarize-report', { report }),
   placementInsights: (data: any) => apiClient.post('/ai/placement-insights', data),
+
+  // Audit Logs
+  getAuditLogs: (params?: any) => apiClient.get('/audit', { params }),
+
+  // Reports & CSV Export
+  exportCsv: (type: string, params?: any) => apiClient.get(`/reports/export/${type}`, { params }),
 };

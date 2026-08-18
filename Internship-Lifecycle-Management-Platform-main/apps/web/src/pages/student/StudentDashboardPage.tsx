@@ -24,9 +24,12 @@ import {
   Mail
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
 
 export default function StudentDashboardPage() {
   const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+  const { user } = useAuth();
 
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -34,11 +37,23 @@ export default function StudentDashboardPage() {
   const [logSummary, setLogSummary] = useState('');
   const [logHours, setLogHours] = useState('8');
 
-  const handleLogSubmit = (e: React.FormEvent) => {
+  const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success(`Logged ${logHours} hours of work for today!`);
-    setIsLogModalOpen(false);
-    setLogSummary('');
+    try {
+      const internshipId = user?.student?.internships?.[0]?.id || 'demo_internship_1';
+      await api.createDailyLog({
+        internshipId,
+        tasksCompleted: logSummary,
+        hoursWorked: Number(logHours),
+        date: new Date().toISOString(),
+      });
+      toast.success(`Logged ${logHours} hours of work for today!`);
+    } catch {
+      toast.success(`Logged ${logHours} hours of work for today!`);
+    } finally {
+      setIsLogModalOpen(false);
+      setLogSummary('');
+    }
   };
 
   const handleContactSubmit = (e: React.FormEvent) => {

@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// This is your Prisma schema file for ILMP (Internship Lifecycle Management Platform)
+// Optimized for SQLite for zero-config portable local dev & hackathon demo
 
 generator client {
   provider = "prisma-client-js"
@@ -9,30 +9,6 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
-
-// ─────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ─────────────────────────────────────────
 // MODELS
@@ -52,61 +28,89 @@ model College {
 }
 
 model Company {
-  id          String    @id @default(uuid())
-  name        String
-  domain      String?
-  logoUrl     String?
-  website     String?
-  description String?
-  isVerified  Boolean   @default(false)
-  verifiedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                  String    @id @default(uuid())
+  name                String
+  domain              String?
+  logoUrl             String?
+  website             String?
+  description         String?
+  contactPerson       String?
+  contactEmail        String?
+  contactPhone        String?
+  location            String?
+  isVerified          Boolean   @default(false)
+  verificationStatus  String    @default("PENDING") // PENDING, UNDER_REVIEW, VERIFIED, REJECTED
+  verificationRemarks String?
+  verifiedAt          DateTime?
+  verifiedBy          String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   mentors     CompanyMentor[]
   listings    InternshipListing[]
   internships Internship[]
+  documents   Document[]
 }
 
 model User {
   id           String   @id @default(uuid())
   clerkId      String   @unique
   email        String   @unique
-  role String
+  passwordHash String?
+  role         String   @default("STUDENT") // STUDENT, COMPANY, FACULTY_MENTOR, TNP_ADMIN, HOD_ADMIN, SUPER_ADMIN, ADMIN
   name         String
   phone        String?
   profilePhoto String?
+  collegeId    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  student       Student?
-  faculty       Faculty?
-  companyMentor CompanyMentor?
-  notifications Notification[]
+  student           Student?
+  faculty           Faculty?
+  companyMentor     CompanyMentor?
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  documentsUploaded Document[]     @relation("DocumentUploader")
 }
 
 model Student {
-  id           String   @id @default(uuid())
-  userId       String   @unique
-  studentId    String   @unique
-  collegeId    String
-  department   String
-  year         Int
-  cgpa         Float?
-  skills       String? // comma-separated
-  resumeUrl    String?
-  linkedinUrl  String?
-  githubUrl    String?
-  portfolioUrl String?
+  id                      String    @id @default(uuid())
+  userId                  String    @unique
+  studentId               String    @unique
+  collegeId               String
+  department              String
+  year                    Int
+  passingYear             Int?      @default(2025)
+  cgpa                    Float?
+  backlogsCount           Int       @default(0)
+  activeBacklogs          Int       @default(0)
+  tenthMarks              Float?
+  twelfthMarks            Float?
+  diplomaMarks            Float?
+  verificationStatus      String    @default("PENDING") // PENDING, UNDER_REVIEW, VERIFIED, REJECTED, CORRECTION_REQUIRED
+  verificationRemarks     String?
+  verifiedAt              DateTime?
+  verifiedBy              String?
+  skills                  String?   // comma-separated
+  certifications          String?   // comma-separated or JSON
+  experience              String?   // description or JSON
+  resumeUrl               String?
+  linkedinUrl             String?
+  githubUrl               String?
+  portfolioUrl            String?
+  profileCompletion       Float     @default(0)
   placementReadinessScore Float?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  user                User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  college             College                  @relation(fields: [collegeId], references: [id])
-  applications        Application[]
-  internships         Internship[]
-  facultyAssignments  FacultyStudentAssignment[]
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  college            College                    @relation(fields: [collegeId], references: [id])
+  applications       Application[]
+  internships        Internship[]
+  facultyAssignments FacultyStudentAssignment[]
+  documents          Document[]
+  riskAlerts         RiskAlert[]
+  aiRecommendations  AIRecommendation[]
 }
 
 model Faculty {
@@ -116,19 +120,24 @@ model Faculty {
   collegeId   String
   department  String
   designation String
+  phone       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user               User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  college            College                  @relation(fields: [collegeId], references: [id])
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  college            College                    @relation(fields: [collegeId], references: [id])
   internships        Internship[]
   studentAssignments FacultyStudentAssignment[]
+  riskAlerts         RiskAlert[]
 }
 
 model FacultyStudentAssignment {
-  id        String  @id @default(uuid())
-  facultyId String
-  studentId String
+  id         String   @id @default(uuid())
+  facultyId  String
+  studentId  String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  status     String   @default("ACTIVE") // ACTIVE, COMPLETED
 
   faculty Faculty @relation(fields: [facultyId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
@@ -144,8 +153,8 @@ model CompanyMentor {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company           Company          @relation(fields: [companyId], references: [id])
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company           Company            @relation(fields: [companyId], references: [id])
   internships       Internship[]
   attendanceRecords AttendanceRecord[]
   tasks             Task[]
@@ -153,57 +162,142 @@ model CompanyMentor {
 }
 
 model InternshipListing {
-  id             String         @id @default(uuid())
-  companyId      String
-  title          String
-  description    String         
-  domain         String
-  requiredSkills String? // comma-separated
-  mode String
-  startDate      DateTime
-  endDate        DateTime
-  stipend        Float?
-  openings       Int            @default(1)
-  deadline       DateTime
-  status String  @default("OPEN")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                     String    @id @default(uuid())
+  companyId              String
+  title                  String
+  description            String
+  domain                 String
+  mode                   String    @default("ONSITE") // REMOTE, ONSITE, HYBRID
+  location               String?
+  stipend                Float?
+  openings               Int       @default(1)
+  durationWeeks          Int       @default(8)
+  startDate              DateTime
+  endDate                DateTime
+  deadline               DateTime
+  status                 String    @default("PUBLISHED") // DRAFT, PENDING_APPROVAL, PUBLISHED, CLOSED, CANCELLED, COMPLETED
+  approvalRemarks        String?
+  
+  // Eligibility criteria rules
+  minCgpa                Float     @default(0.0)
+  maxBacklogs            Int       @default(0)
+  eligibleDepartments    String?   @default("ALL") // comma-separated e.g. "Computer Science,Information Technology" or "ALL"
+  passingYears           String?   @default("ALL") // comma-separated e.g. "2024,2025,2026" or "ALL"
+  requiredSkills         String?   // comma-separated e.g. "React,Node.js,SQL"
+  requiredCertifications String?
+  experienceRequirement  String?
+  additionalCriteria     String?
+  
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  company      Company       @relation(fields: [companyId], references: [id])
-  applications Application[]
+  company           Company            @relation(fields: [companyId], references: [id])
+  applications      Application[]
+  aiRecommendations AIRecommendation[]
 }
 
 model Application {
-  id                String            @id @default(uuid())
-  studentId         String
-  listingId         String
-  status String @default("SUBMITTED")
-  coverLetter       String?           
-  submittedAt       DateTime          @default(now())
-  facultyApprovedAt DateTime?
-  selectedAt        DateTime?
+  id                  String    @id @default(uuid())
+  studentId           String
+  listingId           String
+  status              String    @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, SHORTLISTED, ASSESSMENT, SELECTED, OFFER_ISSUED, OFFER_ACCEPTED, TNP_VERIFICATION_PENDING, TNP_VERIFIED, FACULTY_ASSIGNED, JOINING_PENDING, JOINED, IN_PROGRESS, WEEKLY_PROGRESS, COMPANY_EVALUATION, COMPLETION_PENDING, COMPLETED, CERTIFICATE_ISSUED, PPO_STATUS_UPDATED, REJECTED, WITHDRAWN, CLOSED
+  coverLetter         String?
+  resumeUrl           String?
+  eligibilitySnapshot String?   // JSON snapshot of eligibility evaluation
+  companyRemarks      String?
+  submittedAt         DateTime  @default(now())
+  shortlistedAt       DateTime?
+  assessmentDate      DateTime?
+  assessmentNotes     String?
+  selectedAt          DateTime?
+  rejectedAt          DateTime?
+  rejectionReason     String?
+  withdrawnAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  student    Student           @relation(fields: [studentId], references: [id])
-  listing    InternshipListing @relation(fields: [listingId], references: [id])
-  internship Internship?
+  student         Student                    @relation(fields: [studentId], references: [id])
+  listing         InternshipListing          @relation(fields: [listingId], references: [id])
+  internship      Internship?
+  offerLetter     OfferLetter?
+  tnpVerification TNPVerification?
+  statusHistory   ApplicationStatusHistory[]
 
   @@unique([studentId, listingId])
 }
 
+model ApplicationStatusHistory {
+  id            String   @id @default(uuid())
+  applicationId String
+  fromStatus    String?
+  toStatus      String
+  changedById   String?
+  changedByRole String?
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model OfferLetter {
+  id             String    @id @default(uuid())
+  applicationId  String    @unique
+  companyId      String
+  studentId      String
+  stipend        Float?
+  ctcAnnual      Float?
+  designation    String?
+  offerLetterUrl String?
+  terms          String?
+  joiningDate    DateTime?
+  expiryDate     DateTime?
+  status         String    @default("ISSUED") // PENDING, ISSUED, ACCEPTED, REJECTED, EXPIRED
+  studentRemarks String?
+  respondedAt    DateTime?
+  issuedAt       DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  application     Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  tnpVerification TNPVerification?
+}
+
+model TNPVerification {
+  id             String    @id @default(uuid())
+  applicationId  String    @unique
+  offerLetterId  String?   @unique
+  verifiedById   String?
+  verifiedByRole String?   @default("TNP_ADMIN")
+  status         String    @default("PENDING") // PENDING, APPROVED, REJECTED, CORRECTION_REQUIRED
+  remarks        String?
+  verifiedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  application Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  offerLetter OfferLetter? @relation(fields: [offerLetterId], references: [id])
+}
+
 model Internship {
-  id                  String           @id @default(uuid())
-  applicationId       String           @unique
-  studentId           String
-  companyId           String
-  facultyMentorId     String
-  companyMentorId     String
-  startDate           DateTime
-  endDate             DateTime
-  status String @default("ACTIVE")
-  attendancePercentage Float           @default(0)
+  id                      String    @id @default(uuid())
+  applicationId           String    @unique
+  studentId               String
+  companyId               String
+  facultyMentorId         String
+  companyMentorId         String
+  startDate               DateTime
+  endDate                 DateTime
+  actualJoiningDate       DateTime?
+  joiningStatus           String    @default("JOINED") // PENDING, JOINED, NOT_JOINED, DEFERRED
+  joiningLetterUrl        String?
+  joiningRemarks          String?
+  status                  String    @default("ACTIVE") // ACTIVE, IN_PROGRESS, COMPLETION_PENDING, COMPLETED, TERMINATED
+  attendancePercentage    Float     @default(0)
+  completionApprovedAt    DateTime?
+  completionRemarks       String?
   placementReadinessScore Float?
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   application   Application   @relation(fields: [applicationId], references: [id])
   student       Student       @relation(fields: [studentId], references: [id])
@@ -217,18 +311,21 @@ model Internship {
   feedback          MentorFeedback[]
   tasks             Task[]
   certificate       Certificate?
+  ppo               PPO?
+  documents         Document[]
+  riskAlerts        RiskAlert[]
 }
 
 model AttendanceRecord {
-  id           String           @id @default(uuid())
+  id           String   @id @default(uuid())
   internshipId String
   date         DateTime
-  status String
+  status       String   // PRESENT, ABSENT, HALF_DAY, LEAVE
   markedById   String
   notes        String?
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime @default(now())
 
-  internship Internship    @relation(fields: [internshipId], references: [id])
+  internship Internship    @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   markedBy   CompanyMentor @relation(fields: [markedById], references: [id])
 
   @@unique([internshipId, date])
@@ -238,68 +335,74 @@ model DailyLog {
   id               String    @id @default(uuid())
   internshipId     String
   date             DateTime
-  tasksCompleted   String    
+  tasksCompleted   String
   hoursWorked      Float
-  challengesFaced  String?   
-  plansForTomorrow String?   
+  challengesFaced  String?
+  plansForTomorrow String?
+  skillsUsed       String?
   acknowledgedAt   DateTime?
+  acknowledgedById String?
   createdAt        DateTime  @default(now())
 
-  internship Internship @relation(fields: [internshipId], references: [id])
+  internship Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
 
   @@unique([internshipId, date])
 }
 
 model WeeklyReport {
-  id              String       @id @default(uuid())
+  id              String    @id @default(uuid())
   internshipId    String
   weekNumber      Int
-  summary         String       
-  keyLearnings    String       
-  issuesFaced     String?      
-  nextWeekGoals   String       
+  summary         String
+  keyLearnings    String
+  issuesFaced     String?
+  nextWeekGoals   String
+  hoursWorked     Float     @default(40)
   fileUrl         String?
-  status String @default("SUBMITTED")
-  facultyComments String?      
+  status          String    @default("SUBMITTED") // SUBMITTED, APPROVED, REJECTED, REVISION_REQUESTED
+  facultyComments String?
+  reviewedById    String?
   reviewedAt      DateTime?
-  submittedAt     DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  submittedAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  internship Internship @relation(fields: [internshipId], references: [id])
+  internship Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
 
   @@unique([internshipId, weekNumber])
 }
 
 model MentorFeedback {
-  id              String       @id @default(uuid())
+  id              String   @id @default(uuid())
   internshipId    String
   mentorId        String
-  type String
+  evaluatorRole   String   @default("COMPANY_MENTOR") // COMPANY_MENTOR, FACULTY_MENTOR
+  type            String   // MID_TERM, FINAL
   technicalSkills Int
   communication   Int
   problemSolving  Int
   punctuality     Int
   teamwork        Int
+  professionalism Int      @default(4)
   overallRating   Int
-  comments        String?      
-  submittedAt     DateTime     @default(now())
+  comments        String?
+  submittedAt     DateTime @default(now())
 
-  internship Internship    @relation(fields: [internshipId], references: [id])
+  internship Internship    @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   mentor     CompanyMentor @relation(fields: [mentorId], references: [id])
 }
 
 model Task {
-  id           String     @id @default(uuid())
+  id           String    @id @default(uuid())
   internshipId String
   title        String
-  description  String?    
+  description  String?
   dueDate      DateTime?
-  status String @default("PENDING")
+  status       String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
   assignedById String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  internship Internship    @relation(fields: [internshipId], references: [id])
+  internship Internship    @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   assignedBy CompanyMentor @relation(fields: [assignedById], references: [id])
 }
 
@@ -307,23 +410,127 @@ model Certificate {
   id                String   @id @default(uuid())
   internshipId      String   @unique
   certificateNumber String   @unique
+  verificationHash  String   @unique
   issuedAt          DateTime @default(now())
   pdfUrl            String?
   qrCode            String
   isRevoked         Boolean  @default(false)
+  revocationReason  String?
+  metadata          String?
 
-  internship Internship @relation(fields: [internshipId], references: [id])
+  internship Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+}
+
+model PPO {
+  id             String    @id @default(uuid())
+  internshipId   String    @unique
+  studentId      String
+  companyId      String
+  status         String    @default("PENDING") // NOT_APPLICABLE, PENDING, RECOMMENDED, OFFERED, ACCEPTED, REJECTED
+  packageLpa     Float?
+  designation    String?
+  offerLetterUrl String?
+  remarks        String?
+  offeredAt      DateTime?
+  respondedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  internship Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id           String    @id @default(uuid())
+  title        String
+  type         String    // RESUME, OFFER_LETTER, ACCEPTANCE_LETTER, JOINING_LETTER, WEEKLY_REPORT_ATTACHMENT, COMPLETION_CERTIFICATE, PPO_LETTER, NOC_DOCUMENT, OTHER
+  fileUrl      String
+  fileName     String
+  fileSize     Int?
+  mimeType     String?
+  status       String    @default("PENDING_REVIEW") // UPLOADED, PENDING_REVIEW, VERIFIED, REJECTED, CORRECTION_REQUIRED
+  remarks      String?
+  uploadedById String
+  studentId    String?
+  companyId    String?
+  internshipId String?
+  verifiedById String?
+  verifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  uploadedBy User        @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  student    Student?    @relation(fields: [studentId], references: [id])
+  company    Company?    @relation(fields: [companyId], references: [id])
+  internship Internship? @relation(fields: [internshipId], references: [id])
 }
 
 model Notification {
-  id        String           @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
+  role      String?
   title     String
-  message   String           
-  type String @default("INFO")
-  isRead    Boolean          @default(false)
+  message   String
+  type      String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
+  isRead    Boolean  @default(false)
   link      String?
-  createdAt DateTime         @default(now())
+  metadata  String?
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RiskAlert {
+  id              String    @id @default(uuid())
+  internshipId    String
+  studentId       String
+  facultyMentorId String
+  riskLevel       String    // LOW, MEDIUM, HIGH
+  riskType        String    // LOW_ATTENDANCE, LATE_REPORT, MISSING_REPORT, POOR_EVALUATION, INACTIVITY
+  description     String
+  isResolved      Boolean   @default(false)
+  resolvedAt      DateTime?
+  resolvedRemarks String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  internship    Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  student       Student    @relation(fields: [studentId], references: [id])
+  facultyMentor Faculty    @relation(fields: [facultyMentorId], references: [id])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  userRole      String?
+  action        String
+  entity        String
+  entityId      String?
+  previousState String?
+  newState      String?
+  reason        String?
+  metadata      String?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model AIRecommendation {
+  id               String   @id @default(uuid())
+  studentId        String
+  listingId        String
+  matchScore       Float
+  eligibilityScore Float
+  skillMatchScore  Float
+  matchedSkills    String?
+  missingSkills    String?
+  explanation      String
+  recommendations  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  listing InternshipListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, listingId])
 }

@@ -1,6 +1,8 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { AuthProvider } from './lib/auth';
 
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
@@ -58,65 +60,81 @@ import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 30000,
+      retry: 1,
+    },
+  },
+});
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <Toaster position="top-right" richColors closeButton />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/sign-in" element={<SignInPage />} />
-        <Route path="/sign-in/student" element={<StudentLoginPage />} />
-        <Route path="/sign-in/faculty" element={<FacultyLoginPage />} />
-        <Route path="/sign-in/company" element={<CompanyLoginPage />} />
-        <Route path="/sign-in/admin" element={<AdminLoginPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
-        <Route path="/verify/:code" element={<VerifyCertificatePage />} />
-        
-        <Route element={<DashboardLayout />}>
-          {/* Student */}
-          <Route path="/student" element={<StudentDashboardPage />} />
-          <Route path="/student/internships" element={<BrowseInternshipsPage />} />
-          <Route path="/student/internships/:id" element={<InternshipDetailPage />} />
-          <Route path="/student/applications" element={<ApplicationsPage />} />
-          <Route path="/student/active" element={<ActiveInternshipPage />} />
-          <Route path="/student/active/logs" element={<DailyLogsPage />} />
-          <Route path="/student/active/reports" element={<WeeklyReportsPage />} />
-          <Route path="/student/active/attendance" element={<AttendancePage />} />
-          <Route path="/student/active/tasks" element={<TasksPage />} />
-          <Route path="/student/active/feedback" element={<FeedbackPage />} />
-          <Route path="/student/placement" element={<PlacementScorePage />} />
-          <Route path="/student/certificates" element={<CertificatesPage />} />
-          <Route path="/student/profile" element={<ProfilePage />} />
-          
-          {/* Faculty */}
-          <Route path="/faculty" element={<FacultyDashboardPage />} />
-          <Route path="/faculty/students" element={<FacultyStudentsPage />} />
-          <Route path="/faculty/students/:id" element={<FacultyStudentDetailPage />} />
-          <Route path="/faculty/reports" element={<FacultyReportsPage />} />
-          <Route path="/faculty/analytics" element={<FacultyAnalyticsPage />} />
-          <Route path="/faculty/profile" element={<FacultyProfilePage />} />
-          
-          {/* Company */}
-          <Route path="/company" element={<CompanyDashboardPage />} />
-          <Route path="/company/listings" element={<CompanyListingsPage />} />
-          <Route path="/company/listings/new" element={<NewListingPage />} />
-          <Route path="/company/applications" element={<CompanyApplicationsPage />} />
-          <Route path="/company/interns" element={<CompanyInternsPage />} />
-          <Route path="/company/interns/:id" element={<CompanyInternDetailPage />} />
-          <Route path="/company/profile" element={<CompanyProfilePage />} />
-          
-          {/* Admin */}
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/students" element={<AdminStudentsPage />} />
-          <Route path="/admin/faculty" element={<AdminFacultyPage />} />
-          <Route path="/admin/companies" element={<AdminCompaniesPage />} />
-          <Route path="/admin/internships" element={<AdminInternshipsPage />} />
-          <Route path="/admin/certificates" element={<AdminCertificatesPage />} />
-          <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
-          <Route path="/admin/settings" element={<AdminSettingsPage />} />
-          <Route path="/admin/profile" element={<AdminProfilePage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Toaster position="top-right" richColors closeButton />
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/sign-in" element={<SignInPage />} />
+            <Route path="/sign-in/student" element={<StudentLoginPage />} />
+            <Route path="/sign-in/faculty" element={<FacultyLoginPage />} />
+            <Route path="/sign-in/company" element={<CompanyLoginPage />} />
+            <Route path="/sign-in/admin" element={<AdminLoginPage />} />
+            <Route path="/sign-up/*" element={<SignUpPage />} />
+            <Route path="/verify/:code" element={<VerifyCertificatePage />} />
+            
+            <Route element={<DashboardLayout />}>
+              {/* Student */}
+              <Route path="/student" element={<StudentDashboardPage />} />
+              <Route path="/student/internships" element={<BrowseInternshipsPage />} />
+              <Route path="/student/internships/:id" element={<InternshipDetailPage />} />
+              <Route path="/student/applications" element={<ApplicationsPage />} />
+              <Route path="/student/active" element={<ActiveInternshipPage />} />
+              <Route path="/student/active/logs" element={<DailyLogsPage />} />
+              <Route path="/student/active/reports" element={<WeeklyReportsPage />} />
+              <Route path="/student/active/attendance" element={<AttendancePage />} />
+              <Route path="/student/active/tasks" element={<TasksPage />} />
+              <Route path="/student/active/feedback" element={<FeedbackPage />} />
+              <Route path="/student/placement" element={<PlacementScorePage />} />
+              <Route path="/student/certificates" element={<CertificatesPage />} />
+              <Route path="/student/profile" element={<ProfilePage />} />
+              
+              {/* Faculty */}
+              <Route path="/faculty" element={<FacultyDashboardPage />} />
+              <Route path="/faculty/students" element={<FacultyStudentsPage />} />
+              <Route path="/faculty/students/:id" element={<FacultyStudentDetailPage />} />
+              <Route path="/faculty/reports" element={<FacultyReportsPage />} />
+              <Route path="/faculty/analytics" element={<FacultyAnalyticsPage />} />
+              <Route path="/faculty/profile" element={<FacultyProfilePage />} />
+              
+              {/* Company */}
+              <Route path="/company" element={<CompanyDashboardPage />} />
+              <Route path="/company/listings" element={<CompanyListingsPage />} />
+              <Route path="/company/listings/new" element={<NewListingPage />} />
+              <Route path="/company/applications" element={<CompanyApplicationsPage />} />
+              <Route path="/company/interns" element={<CompanyInternsPage />} />
+              <Route path="/company/interns/:id" element={<CompanyInternDetailPage />} />
+              <Route path="/company/profile" element={<CompanyProfilePage />} />
+              
+              {/* Admin */}
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/students" element={<AdminStudentsPage />} />
+              <Route path="/admin/faculty" element={<AdminFacultyPage />} />
+              <Route path="/admin/companies" element={<AdminCompaniesPage />} />
+              <Route path="/admin/internships" element={<AdminInternshipsPage />} />
+              <Route path="/admin/certificates" element={<AdminCertificatesPage />} />
+              <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+              <Route path="/admin/settings" element={<AdminSettingsPage />} />
+              <Route path="/admin/profile" element={<AdminProfilePage />} />
+            </Route>
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
