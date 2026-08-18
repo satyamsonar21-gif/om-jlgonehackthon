@@ -8,15 +8,17 @@ import {
   FileText, 
   CheckSquare, 
   ChevronRight, 
-  CheckCircle, 
-  AlertTriangle, 
-  TrendingUp,
-  Clock,
-  Sparkles,
+  Clock, 
+  Sparkles, 
+  Building2, 
+  UserCheck, 
+  Award,
   ArrowRight,
-  Bookmark
+  Send,
+  Plus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -54,7 +56,7 @@ export default function StudentDashboardPage() {
           <LifecycleRail currentStage={4} variant="full" showLabel={true} />
         </motion.div>
 
-        {/* 2. Primary Metric Hero: Placement Readiness Score */}
+        {/* 2. Active Sprint Milestone Hero (Replacing Placement Readiness) */}
         <motion.div 
           variants={itemVariants} 
           className="rounded-2xl border shadow-md p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6"
@@ -63,35 +65,47 @@ export default function StudentDashboardPage() {
             borderColor: 'var(--border)',
           }}
         >
-          <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-mono font-bold"
+          <div className="space-y-2.5 max-w-xl">
+            <div 
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold border"
               style={{
-                backgroundColor: 'var(--surface-muted)',
-                color: 'var(--primary)',
-                border: '1px solid var(--border)'
+                backgroundColor: 'var(--accent-soft)',
+                color: 'var(--role-accent, var(--cta))',
+                borderColor: 'var(--border)'
               }}
             >
-              <Sparkles size={12} />
-              AI-CALCULATED CAREER READINESS
+              <Sparkles size={13} />
+              <span>ACTIVE INDUSTRIAL INTERNSHIP · SPRINT 4</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text)' }}>
-              78% Placement Readiness Index
+              Distributed OAuth2 & Cloud Architecture
             </h2>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              Strong velocity across Technical Execution and Daily Sprint Logs. Complete Week 5 synthesis report to unlock Tier-1 placement recommendations.
+              You are currently 4 weeks into your 12-week industrial placement with TechCorp Solutions. Weekly synthesis reports are reviewed every Friday by Faculty Guide Dr. Rajesh Kumar.
             </p>
           </div>
 
-          <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
             <Link
-              to="/student/placement"
+              to="/student/active/logs"
               className="px-5 py-3 rounded-xl font-bold font-mono text-xs tracking-wider uppercase transition-all shadow-md flex items-center gap-2 hover:scale-105"
               style={{
                 backgroundColor: 'var(--cta)',
                 color: 'var(--cta-text)'
               }}
             >
-              <span>View Full Analytics</span>
+              <Clock size={15} />
+              <span>Log Today's Work</span>
+            </Link>
+            <Link
+              to="/student/active"
+              className="px-5 py-3 rounded-xl font-bold font-mono text-xs tracking-wider uppercase transition-all border flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800"
+              style={{
+                borderColor: 'var(--border)',
+                color: 'var(--text)'
+              }}
+            >
+              <span>Active Hub</span>
               <ChevronRight size={14} />
             </Link>
           </div>
@@ -177,6 +191,36 @@ export default function StudentDashboardPage() {
                   <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Due tomorrow 11:59 PM</p>
                 </div>
               </Link>
+
+              <Link
+                to="/student/active/attendance"
+                className="p-4 rounded-xl border transition-all flex items-start gap-3 hover:scale-[1.01]"
+                style={{
+                  backgroundColor: 'var(--surface-muted)',
+                  borderColor: 'var(--border)'
+                }}
+              >
+                <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#10B981' }} />
+                <div>
+                  <h4 className="font-bold text-xs" style={{ color: 'var(--text)' }}>Clock In Attendance</h4>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>View date-wise presence logs</p>
+                </div>
+              </Link>
+
+              <Link
+                to="/student/profile"
+                className="p-4 rounded-xl border transition-all flex items-start gap-3 hover:scale-[1.01]"
+                style={{
+                  backgroundColor: 'var(--surface-muted)',
+                  borderColor: 'var(--border)'
+                }}
+              >
+                <UserCheck className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--highlights)' }} />
+                <div>
+                  <h4 className="font-bold text-xs" style={{ color: 'var(--text)' }}>Student Dossier & Profile</h4>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Update verified skill tags & contact</p>
+                </div>
+              </Link>
             </div>
           </div>
 
@@ -194,7 +238,7 @@ export default function StudentDashboardPage() {
 
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-xl border" style={{ backgroundColor: 'var(--surface-muted)', borderColor: 'var(--border)' }}>
-                <span className="text-[10px] font-mono uppercase font-bold block" style={{ color: 'var(--highlights)' }}>Industry Guide</span>
+                <span className="text-[10px] font-mono uppercase font-bold block" style={{ color: 'var(--highlights)' }}>Industry Mentor</span>
                 <span className="font-bold block text-sm" style={{ color: 'var(--text)' }}>Siddharth Nambiar</span>
                 <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Lead Architect · TechCorp</span>
               </div>

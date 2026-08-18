@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
 
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
@@ -35,6 +36,7 @@ import FacultyStudentsPage from './pages/faculty/FacultyStudentsPage';
 import FacultyStudentDetailPage from './pages/faculty/FacultyStudentDetailPage';
 import FacultyReportsPage from './pages/faculty/FacultyReportsPage';
 import FacultyAnalyticsPage from './pages/faculty/FacultyAnalyticsPage';
+import FacultyProfilePage from './pages/faculty/FacultyProfilePage';
 
 // Company
 import CompanyDashboardPage from './pages/company/CompanyDashboardPage';
@@ -43,6 +45,7 @@ import NewListingPage from './pages/company/NewListingPage';
 import CompanyApplicationsPage from './pages/company/CompanyApplicationsPage';
 import CompanyInternsPage from './pages/company/CompanyInternsPage';
 import CompanyInternDetailPage from './pages/company/CompanyInternDetailPage';
+import CompanyProfilePage from './pages/company/CompanyProfilePage';
 
 // Admin
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -53,10 +56,12 @@ import AdminInternshipsPage from './pages/admin/AdminInternshipsPage';
 import AdminCertificatesPage from './pages/admin/AdminCertificatesPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import AdminProfilePage from './pages/admin/AdminProfilePage';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" richColors closeButton />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/sign-in" element={<SignInPage />} />
@@ -89,6 +94,7 @@ export default function App() {
           <Route path="/faculty/students/:id" element={<FacultyStudentDetailPage />} />
           <Route path="/faculty/reports" element={<FacultyReportsPage />} />
           <Route path="/faculty/analytics" element={<FacultyAnalyticsPage />} />
+          <Route path="/faculty/profile" element={<FacultyProfilePage />} />
           
           {/* Company */}
           <Route path="/company" element={<CompanyDashboardPage />} />
@@ -97,6 +103,7 @@ export default function App() {
           <Route path="/company/applications" element={<CompanyApplicationsPage />} />
           <Route path="/company/interns" element={<CompanyInternsPage />} />
           <Route path="/company/interns/:id" element={<CompanyInternDetailPage />} />
+          <Route path="/company/profile" element={<CompanyProfilePage />} />
           
           {/* Admin */}
           <Route path="/admin" element={<AdminDashboardPage />} />
@@ -107,6 +114,7 @@ export default function App() {
           <Route path="/admin/certificates" element={<AdminCertificatesPage />} />
           <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
+          <Route path="/admin/profile" element={<AdminProfilePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

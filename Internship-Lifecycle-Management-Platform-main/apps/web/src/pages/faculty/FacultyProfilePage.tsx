@@ -1,91 +1,83 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Header } from '@/components/layout/Header';
-import { GraduationCap, Upload, Save, CheckCircle2, User, Mail, Phone, MapPin, Building2, Check, ExternalLink } from 'lucide-react';
+import Header from '@/components/layout/Header';
+import { BookOpen, User, Mail, Phone, Building2, Save, Check, Award, GraduationCap, Calendar, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
-const initialSkills = ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'TailwindCSS', 'Git', 'REST APIs', 'Docker', 'Zustand'];
-
-export default function ProfilePage() {
-  const [skills, setSkills] = useState(initialSkills);
-  const [newSkill, setNewSkill] = useState('');
+export default function FacultyProfilePage() {
   const [saved, setSaved] = useState(false);
+  const [researchAreas, setResearchAreas] = useState([
+    'Distributed Systems & Cloud Computing',
+    'Applied Artificial Intelligence in Healthcare',
+    'Database Optimization & Indexing Algorithms',
+    'Software Architecture & Agile Methodologies'
+  ]);
+  const [newArea, setNewArea] = useState('');
 
-  const addSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()]);
-      setNewSkill('');
-      toast.success(`Skill "${newSkill.trim()}" added to verified dossier`);
+  const handleAddArea = () => {
+    if (newArea.trim() && !researchAreas.includes(newArea.trim())) {
+      setResearchAreas([...researchAreas, newArea.trim()]);
+      setNewArea('');
+      toast.success('Research area added');
     }
   };
 
-  const removeSkill = (skillToRemove: string) => {
-    setSkills(skills.filter(s => s !== skillToRemove));
-    toast.info(`Removed "${skillToRemove}" from skills`);
+  const handleRemoveArea = (area: string) => {
+    setResearchAreas(researchAreas.filter(a => a !== area));
+    toast.info('Research area removed');
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setSaved(true);
-    toast.success('Student profile & academic contact records updated successfully!');
+    toast.success('Faculty profile details updated successfully');
     setTimeout(() => setSaved(false), 3000);
   };
 
   return (
     <div className="min-h-full pb-16" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-      <Header title="Student Profile & Dossier" subtitle="Manage academic records, contact info, verified technical skills, and resume links" />
-      
-      <main className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
+      <Header 
+        title="Faculty Advisor Profile & Dossier" 
+        subtitle="Manage academic credentials, supervised cohorts, and office consultation hours" 
+      />
+
+      <main className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
         {/* Profile Card Header */}
         <motion.div 
           initial={{ opacity: 0, y: 12 }} 
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border shadow-sm p-6 flex flex-col sm:flex-row items-center sm:items-start gap-5"
+          className="rounded-2xl border shadow-sm p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6"
           style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
         >
-          <div 
-            className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black shadow-xs border flex-shrink-0"
-            style={{
-              backgroundColor: 'var(--accent-soft)',
-              color: 'var(--role-accent, var(--cta))',
-              borderColor: 'var(--border)'
-            }}
-          >
-            PS
+          <div className="w-20 h-20 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-[#059669] flex items-center justify-center text-2xl font-black shadow-xs flex-shrink-0 border border-emerald-300 dark:border-emerald-800">
+            RK
           </div>
 
           <div className="flex-1 text-center sm:text-left space-y-1">
             <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
-              <h2 className="text-xl font-bold" style={{ color: 'var(--text)' }}>Priya Sharma</h2>
-              <span 
-                className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border"
-                style={{
-                  backgroundColor: 'var(--accent-soft)',
-                  color: 'var(--role-accent, var(--cta))',
-                  borderColor: 'var(--border)'
-                }}
-              >
-                20CS101 · Tier-1 CSE
+              <h2 className="text-xl font-bold" style={{ color: 'var(--text)' }}>Dr. Rajesh Kumar, Ph.D.</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                FAC-CSE-408
               </span>
             </div>
             <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              B.Tech Computer Science & Engineering · 3rd Year (Term 6)
+              Senior Professor & Industry Internship Coordinator · Dept. of Computer Science & Engineering
             </p>
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-mono pt-1" style={{ color: 'var(--text-muted)' }}>
-              <span>CGPA: 8.7 / 10.0</span>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-mono pt-2" style={{ color: 'var(--text-muted)' }}>
+              <span>42 Assigned Interns</span>
               <span>•</span>
-              <span>Host: TechCorp Solutions</span>
+              <span>12 Industry Partners</span>
               <span>•</span>
-              <span>Faculty Guide: Dr. Rajesh Kumar</span>
+              <span>Experience: 14 Years</span>
             </div>
           </div>
         </motion.div>
 
-        {/* Edit Details Form */}
+        {/* Edit Form */}
         <form onSubmit={handleSave} className="rounded-2xl border shadow-sm p-6 space-y-6" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="border-b pb-3 flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Personal & Academic Contact Details</h3>
-            <span className="text-xs font-mono font-semibold" style={{ color: 'var(--role-accent, var(--cta))' }}>Enrollment Verified</span>
+            <h3 className="font-bold text-sm" style={{ color: 'var(--text)' }}>Faculty Academic & Institutional Information</h3>
+            <span className="text-xs font-mono font-semibold" style={{ color: 'var(--highlights)' }}>Term Q3 2026</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -95,7 +87,7 @@ export default function ProfilePage() {
               </label>
               <input 
                 type="email" 
-                defaultValue="priya.sharma@college.edu" 
+                defaultValue="rajesh.kumar@university.edu" 
                 className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
                 style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
               />
@@ -103,11 +95,11 @@ export default function ProfilePage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                Contact Mobile
+                Department Office & Extension
               </label>
               <input 
                 type="text" 
-                defaultValue="+91 98765 43210" 
+                defaultValue="Academic Block 3, Room 412 (Ext: 8412)" 
                 className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
                 style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
               />
@@ -115,11 +107,11 @@ export default function ProfilePage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                GitHub Profile URL
+                Office Consultation Hours
               </label>
               <input 
                 type="text" 
-                defaultValue="https://github.com/priyasharma" 
+                defaultValue="Mon, Wed, Fri (03:00 PM – 05:00 PM)" 
                 className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
                 style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
               />
@@ -127,38 +119,33 @@ export default function ProfilePage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                LinkedIn Profile URL
+                Contact Phone / WhatsApp
               </label>
               <input 
                 type="text" 
-                defaultValue="https://linkedin.com/in/priyasharma" 
+                defaultValue="+91 98234 56780" 
                 className="w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-xs focus:outline-none" 
                 style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
               />
             </div>
           </div>
 
-          {/* Technical Skills Tags */}
+          {/* Research & Specialization Tags */}
           <div className="space-y-3 pt-2">
             <label className="text-xs font-mono font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-              Verified Technical Skill Tags
+              Faculty Specialization & Research Focus Areas
             </label>
             
             <div className="flex flex-wrap gap-2">
-              {skills.map(s => (
+              {researchAreas.map(area => (
                 <span 
-                  key={s} 
-                  className="px-3 py-1 rounded-xl text-xs font-mono font-semibold border flex items-center gap-1.5"
-                  style={{
-                    backgroundColor: 'var(--accent-soft)',
-                    color: 'var(--role-accent, var(--cta))',
-                    borderColor: 'var(--border)'
-                  }}
+                  key={area} 
+                  className="px-3 py-1 rounded-xl text-xs font-mono font-semibold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5"
                 >
-                  <span>{s}</span>
+                  <span>{area}</span>
                   <button 
                     type="button" 
-                    onClick={() => removeSkill(s)} 
+                    onClick={() => handleRemoveArea(area)} 
                     className="hover:text-rose-600 font-bold ml-1 cursor-pointer"
                   >
                     ×
@@ -170,17 +157,16 @@ export default function ProfilePage() {
             <div className="flex gap-2 max-w-sm pt-1">
               <input
                 type="text"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                placeholder="Add new skill (e.g. Docker)..."
+                value={newArea}
+                onChange={(e) => setNewArea(e.target.value)}
+                placeholder="Add specialization (e.g. Cyber Security)..."
                 className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl px-3 py-2 text-xs focus:outline-none"
                 style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
               />
               <button
                 type="button"
-                onClick={addSkill}
-                className="px-4 py-2 rounded-xl text-white text-xs font-bold font-mono tracking-wider uppercase cursor-pointer"
-                style={{ backgroundColor: 'var(--cta)' }}
+                onClick={handleAddArea}
+                className="px-4 py-2 rounded-xl bg-[#059669] text-white text-xs font-semibold hover:bg-[#047857] transition-colors cursor-pointer"
               >
                 Add
               </button>
@@ -190,7 +176,7 @@ export default function ProfilePage() {
           <div className="pt-4 border-t flex justify-end" style={{ borderColor: 'var(--border)' }}>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl text-white text-xs font-bold font-mono tracking-wider uppercase transition-all shadow-md flex items-center gap-2 cursor-pointer hover:scale-105"
+              className="px-6 py-2.5 rounded-xl font-bold font-mono tracking-wider uppercase transition-all shadow-md flex items-center gap-2 cursor-pointer text-white"
               style={{ backgroundColor: 'var(--cta)' }}
             >
               {saved ? (
@@ -201,7 +187,7 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <Save size={14} />
-                  <span>Save Changes</span>
+                  <span>Save Faculty Profile</span>
                 </>
               )}
             </button>
