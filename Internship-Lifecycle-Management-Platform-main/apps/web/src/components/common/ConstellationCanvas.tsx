@@ -1,245 +1,227 @@
-import React, { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useEffect, useState } from "react";
+import { Table, Eye, Zap } from "lucide-react";
 
-interface ConstellationCanvasProps {
+export interface StudentNode {
+  id: string;
+  name: string;
+  score: number;
+  status: "progressing" | "attention" | "intervention";
+  roll?: string;
+  company?: string;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  radius?: number;
+}
+
+export interface ConstellationProps {
+  students?: StudentNode[];
+  onSelectStudent?: (student: StudentNode) => void;
   className?: string;
   interactive?: boolean;
-  theme?: 'dark' | 'light';
+  theme?: "dark" | "light";
 }
 
-type Status = 'progressing' | 'attention' | 'intervention';
-
-interface Node {
-  id: string;
-  x: number;
-  y: number;
-  status: Status;
-  name: string;
-  roll: string;
-  company: string;
-  vx: number;
-  vy: number;
-}
-
-interface Edge {
-  id: string;
-  source: Node;
-  target: Node;
-}
-
-const MOCK_STUDENTS = [
-  { name: 'Rahul Sharma', roll: '20CS101', company: 'TechCorp' },
-  { name: 'Priya Patel', roll: '20CS102', company: 'Innovatech' },
-  { name: 'Vikram Singh', roll: '20CS103', company: 'DataSystems' },
-  { name: 'Neha Reddy', roll: '20CS104', company: 'GlobalSoft' },
-  { name: 'Amit Kumar', roll: '20CS105', company: 'TechCorp' },
-  { name: 'Sneha Gupta', roll: '20CS106', company: 'DataSystems' },
-  { name: 'Anjali Desai', roll: '20CS107', company: 'Innovatech' },
-  { name: 'Rohan Mehta', roll: '20CS108', company: 'GlobalSoft' },
-  { name: 'Divya Iyer', roll: '20CS109', company: 'TechCorp' },
-  { name: 'Karan Joshi', roll: '20CS110', company: 'CloudWorks' },
-  { name: 'Pooja Verma', roll: '20CS111', company: 'DataSystems' },
-  { name: 'Aditya Rao', roll: '20CS112', company: 'NextGen AI' },
-  { name: 'Tanvi Shah', roll: '20CS113', company: 'Innovatech' },
-  { name: 'Manish Paul', roll: '20CS114', company: 'TechCorp' },
-  { name: 'Kavita Nair', roll: '20CS115', company: 'GlobalSoft' },
-  { name: 'Siddharth Roy', roll: '20CS116', company: 'CloudWorks' },
-  { name: 'Meera Sen', roll: '20CS117', company: 'NextGen AI' },
-  { name: 'Gaurav Das', roll: '20CS118', company: 'DataSystems' },
+const DEFAULT_MOCK_STUDENTS: StudentNode[] = [
+  { id: "s1", name: "Rahul Sharma", score: 88, status: "progressing", roll: "20CS101", company: "TechCorp" },
+  { id: "s2", name: "Priya Patel", score: 92, status: "progressing", roll: "20CS102", company: "Innovatech" },
+  { id: "s3", name: "Vikram Singh", score: 54, status: "intervention", roll: "20CS103", company: "DataSystems" },
+  { id: "s4", name: "Neha Reddy", score: 76, status: "attention", roll: "20CS104", company: "GlobalSoft" },
+  { id: "s5", name: "Amit Kumar", score: 95, status: "progressing", roll: "20CS105", company: "TechCorp" },
+  { id: "s6", name: "Sneha Gupta", score: 89, status: "progressing", roll: "20CS106", company: "DataSystems" },
+  { id: "s7", name: "Anjali Desai", score: 68, status: "attention", roll: "20CS107", company: "Innovatech" },
+  { id: "s8", name: "Rohan Mehta", score: 91, status: "progressing", roll: "20CS108", company: "GlobalSoft" },
+  { id: "s9", name: "Divya Iyer", score: 48, status: "intervention", roll: "20CS109", company: "TechCorp" },
+  { id: "s10", name: "Karan Joshi", score: 82, status: "progressing", roll: "20CS110", company: "CloudWorks" },
+  { id: "s11", name: "Pooja Verma", score: 71, status: "attention", roll: "20CS111", company: "DataSystems" },
+  { id: "s12", name: "Aditya Rao", score: 94, status: "progressing", roll: "20CS112", company: "NextGen AI" },
 ];
 
-const STATUS_COLORS = {
-  progressing: '#10B981', // green
-  attention: '#F59E0B',   // amber
-  intervention: '#EF4444', // red
-};
-
-const generateConstellation = (nodeCount: number): { nodes: Node[], edges: Edge[] } => {
-  const nodes: Node[] = [];
-  
-  for (let i = 0; i < nodeCount; i++) {
-    const angle = (i / nodeCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-    const radius = 18 + Math.random() * 28; // Between 18% and 46% from center
-    
-    const x = 50 + radius * Math.cos(angle);
-    const y = 50 + radius * Math.sin(angle);
-    
-    let status: Status = 'progressing';
-    if (i % 7 === 2 || i % 7 === 5) status = 'attention';
-    if (i === 3 || i === 9 || i === 15) status = 'intervention';
-
-    const student = MOCK_STUDENTS[i % MOCK_STUDENTS.length];
-
-    nodes.push({
-      id: `node-${i}`,
-      x,
-      y,
-      status,
-      name: student.name,
-      roll: student.roll,
-      company: student.company,
-      vx: (Math.random() - 0.5) * 3,
-      vy: (Math.random() - 0.5) * 3,
-    });
-  }
-
-  const edges: Edge[] = [];
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const dx = nodes[i].x - nodes[j].x;
-      const dy = nodes[i].y - nodes[j].y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance < 24) {
-        edges.push({
-          id: `edge-${i}-${j}`,
-          source: nodes[i],
-          target: nodes[j],
-        });
-      }
-    }
-  }
-
-  return { nodes, edges };
-};
-
-export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
-  className = '',
-  interactive = true,
-  theme = 'light',
+export const ConstellationCanvas: React.FC<ConstellationProps> = ({
+  students = DEFAULT_MOCK_STUDENTS,
+  onSelectStudent,
+  className = "",
 }) => {
-  const { nodes, edges } = useMemo(() => generateConstellation(18), []);
-  const [hoveredNode, setHoveredNode] = useState<Node | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [viewMode, setViewMode] = useState<"graph" | "table">("graph");
+  const [hoveredNode, setHoveredNode] = useState<StudentNode | null>(null);
 
-  const isLight = theme === 'light';
-  const edgeStroke = isLight ? 'rgba(11, 82, 91, 0.18)' : 'rgba(255, 255, 255, 0.15)';
+  useEffect(() => {
+    if (viewMode !== "graph") return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth || 400;
+    const height = canvas.clientHeight || 250;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Initialize node positions
+    const nodes = students.map((s) => ({
+      ...s,
+      x: s.x || Math.random() * (width - 60) + 30,
+      y: s.y || Math.random() * (height - 60) + 30,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      radius: s.status === "intervention" ? 8 : s.status === "attention" ? 6 : 5,
+    }));
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw subtle connecting lines based on proximity
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 110) {
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(148, 163, 184, ${0.25 * (1 - dist / 110)})`;
+            ctx.lineWidth = 1;
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Update and draw nodes
+      nodes.forEach((node) => {
+        node.x += node.vx;
+        node.y += node.vy;
+
+        // Bounce on edges
+        if (node.x < 20 || node.x > width - 20) node.vx *= -1;
+        if (node.y < 20 || node.y > height - 20) node.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+
+        // Status-based colors
+        if (node.status === "intervention") {
+          ctx.fillStyle = "#ef4444"; // red-500
+          ctx.shadowColor = "rgba(239, 68, 68, 0.4)";
+          ctx.shadowBlur = 8;
+        } else if (node.status === "attention") {
+          ctx.fillStyle = "#f59e0b"; // amber-500
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle = "#10b981"; // emerald-500
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.fill();
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [students, viewMode]);
 
   return (
-    <div 
-      className={`relative w-full h-full min-h-[320px] overflow-hidden rounded-2xl ${className}`}
-      style={{
-        backgroundColor: isLight ? '#FFFDF8' : '#090D16',
-        borderColor: isLight ? 'rgba(11, 82, 91, 0.12)' : 'rgba(255, 255, 255, 0.08)'
-      }}
-    >
-      {/* Background radial glow */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div 
-          className="w-[70%] h-[70%] blur-[90px] rounded-full"
-          style={{
-            backgroundColor: isLight ? 'rgba(11, 82, 91, 0.06)' : 'rgba(99, 91, 255, 0.12)'
-          }}
-        />
+    <div className={`card-modern relative overflow-hidden p-4 ${className}`}>
+      {/* Header bar with view switcher */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            Student Cohort Risk Matrix
+          </h3>
+        </div>
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs">
+          <button
+            type="button"
+            onClick={() => setViewMode("graph")}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+              viewMode === "graph"
+                ? "bg-white dark:bg-slate-700 shadow-xs font-medium text-slate-900 dark:text-slate-50"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" /> Graph
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+              viewMode === "table"
+                ? "bg-white dark:bg-slate-700 shadow-xs font-medium text-slate-900 dark:text-slate-50"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+            }`}
+          >
+            <Table className="w-3.5 h-3.5" /> Table
+          </button>
+        </div>
       </div>
 
-      <motion.svg
-        className="w-full h-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="xMidYMid slice"
-        animate={{
-          rotate: [0, 1.5, -1.5, 0],
-        }}
-        transition={{
-          duration: 24,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
-        {/* Constellation Edges */}
-        {edges.map((edge) => (
-          <motion.line
-            key={edge.id}
-            x1={edge.source.x}
-            y1={edge.source.y}
-            x2={edge.target.x}
-            y2={edge.target.y}
-            stroke={edgeStroke}
-            strokeWidth="0.4"
-            strokeDasharray="1 1"
-            animate={{
-              x1: [edge.source.x, edge.source.x + edge.source.vx, edge.source.x],
-              y1: [edge.source.y, edge.source.y + edge.source.vy, edge.source.y],
-              x2: [edge.target.x, edge.target.x + edge.target.vx, edge.target.x],
-              y2: [edge.target.y, edge.target.y + edge.target.vy, edge.target.y],
-            }}
-            transition={{
-              duration: 8 + Math.random() * 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-
-        {/* Constellation Student Nodes */}
-        {nodes.map((node) => (
-          <motion.g
-            key={node.id}
-            onMouseEnter={() => interactive && setHoveredNode(node)}
-            onMouseLeave={() => interactive && setHoveredNode(null)}
-            className={interactive ? 'cursor-pointer' : ''}
-            animate={{
-              x: [0, node.vx, 0],
-              y: [0, node.vy, 0],
-            }}
-            transition={{
-              duration: 8 + Math.random() * 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            {/* Outer halo */}
-            <circle
-              cx={node.x}
-              cy={node.y}
-              r="2.2"
-              fill={STATUS_COLORS[node.status]}
-              opacity={isLight ? "0.2" : "0.3"}
-              className="pointer-events-none"
-            />
-            {/* Core dot */}
-            <circle
-              cx={node.x}
-              cy={node.y}
-              r="1"
-              fill={STATUS_COLORS[node.status]}
-              stroke={isLight ? "#FFFDF8" : "#080A12"}
-              strokeWidth="0.3"
-            />
-          </motion.g>
-        ))}
-      </motion.svg>
-
-      {/* Interactive Tooltip */}
-      {interactive && hoveredNode && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 5 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="absolute pointer-events-none z-20 rounded-xl px-3.5 py-2.5 shadow-xl border"
-          style={{
-            left: `${Math.min(Math.max(hoveredNode.x, 15), 85)}%`,
-            top: `${Math.min(Math.max(hoveredNode.y, 18), 82)}%`,
-            transform: 'translate(-50%, -125%)',
-            backgroundColor: isLight ? '#FFFDF8' : '#141926',
-            borderColor: isLight ? 'rgba(11, 82, 91, 0.2)' : 'rgba(255, 255, 255, 0.15)',
-            color: isLight ? '#142326' : '#F4F6FF'
-          }}
-        >
-          <div className="text-xs font-semibold whitespace-nowrap">
-            {hoveredNode.name}
-          </div>
-          <div className="text-[10px] opacity-60">
-            {hoveredNode.company} · {hoveredNode.roll}
-          </div>
-          <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t" style={{ borderColor: isLight ? 'rgba(11, 82, 91, 0.1)' : 'rgba(255, 255, 255, 0.1)' }}>
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: STATUS_COLORS[hoveredNode.status] }}
-            />
-            <span className="text-[10px] font-mono font-medium capitalize" style={{ color: STATUS_COLORS[hoveredNode.status] }}>
-              {hoveredNode.status === 'progressing' ? 'On Track' : hoveredNode.status === 'attention' ? 'Watch' : 'Needs Intervention'}
+      {/* Render Canvas or Dense Table */}
+      {viewMode === "graph" ? (
+        <div className="relative w-full h-64 bg-slate-50/50 dark:bg-slate-950/40 rounded-lg border border-slate-100 dark:border-slate-800/80">
+          <canvas ref={canvasRef} className="w-full h-full block" />
+          {/* Status Legend */}
+          <div className="absolute bottom-2.5 left-3 flex items-center gap-3 text-[11px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> On Track
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500" /> Moderate
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-rose-500" /> Intervention
             </span>
           </div>
-        </motion.div>
+        </div>
+      ) : (
+        <div className="max-h-64 overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 sticky top-0">
+              <tr>
+                <th className="py-2 px-3">Student</th>
+                <th className="py-2 px-3">Readiness Score</th>
+                <th className="py-2 px-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {students.map((st) => (
+                <tr
+                  key={st.id}
+                  onClick={() => onSelectStudent?.(st)}
+                  className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${onSelectStudent ? 'cursor-pointer' : ''}`}
+                >
+                  <td className="py-2 px-3 font-medium text-slate-900 dark:text-slate-200">
+                    {st.name}
+                    {st.roll && <span className="text-[10px] text-slate-400 font-mono block">{st.roll} · {st.company}</span>}
+                  </td>
+                  <td className="py-2 px-3 font-mono">{st.score}%</td>
+                  <td className="py-2 px-3">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        st.status === "intervention"
+                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                          : st.status === "attention"
+                          ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                      }`}
+                    >
+                      {st.status === "intervention" ? "Intervention" : st.status === "attention" ? "Moderate" : "On Track"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

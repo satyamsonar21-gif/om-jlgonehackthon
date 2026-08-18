@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Header from '@/components/layout/Header';
-import { FileText, CheckCircle2, Clock, AlertCircle, Building2, User, ChevronRight, Check, X, MessageSquare } from 'lucide-react';
+import { FileText, CheckCircle2, Clock, AlertCircle, Building2, ChevronRight, Check, X, SlidersHorizontal } from 'lucide-react';
+import { ReviewDrawer, type StudentReviewData } from '@/components/common/ReviewDrawer';
 
 interface ReportItem {
   id: string;
@@ -76,8 +77,7 @@ const initialReports: ReportItem[] = [
 export default function FacultyReportsPage() {
   const [reports, setReports] = useState<ReportItem[]>(initialReports);
   const [activeTab, setActiveTab] = useState<string>('All');
-  const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const [feedbackText, setFeedbackText] = useState<string>('');
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   const filteredReports = reports.filter(report => {
     if (activeTab === 'All') return true;
@@ -87,41 +87,67 @@ export default function FacultyReportsPage() {
     return true;
   });
 
-  const handleStatusChange = (id: string, newStatus: 'Approved' | 'Needs Revision') => {
-    setReports(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
-    setReviewingId(null);
-    setFeedbackText('');
+  const selectedReport = reports.find(r => r.id === selectedReportId) || null;
+
+  const drawerData: StudentReviewData | null = selectedReport ? {
+    id: selectedReport.id,
+    name: selectedReport.student,
+    rollNo: selectedReport.roll,
+    company: selectedReport.company,
+    weekNumber: parseInt(selectedReport.week.replace(/\D/g, '')) || 4,
+    workSummary: `${selectedReport.excerpt}\n\nKey Deliverables:\n• ${selectedReport.tasksCompleted.join('\n• ')}`,
+    hoursLogged: 40,
+    riskStatus: selectedReport.status === 'Needs Revision' ? 'high' : selectedReport.status === 'Pending' ? 'medium' : 'low',
+  } : null;
+
+  const handleApprove = (id: string) => {
+    setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
+    setSelectedReportId(null);
+  };
+
+  const handleRequestRevision = (id: string, _comment: string) => {
+    setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'Needs Revision' } : r));
+    setSelectedReportId(null);
   };
 
   return (
-    <div className="min-h-full pb-16">
+    <div className="min-h-full pb-16" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       <Header 
         title="Weekly Report Review Queue" 
         subtitle="Review, approve, and provide feedback on student submissions" 
       />
       
-      <main className="max-w-5xl mx-auto p-6 md:p-8 space-y-6 text-[#142326]">
+      <main className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
         {/* Navigation Tabs */}
-        <div className="flex items-center justify-between border-b border-[#0B525B]/15 pb-3">
+        <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border)' }}>
           <div className="flex space-x-2 overflow-x-auto">
             {['All', 'Pending', 'Approved', 'Needs Revision'].map((tab) => {
               const count = tab === 'All' 
                 ? reports.length 
                 : reports.filter(r => r.status === (tab === 'Needs Revision' ? 'Needs Revision' : tab)).length;
 
+              const isActive = activeTab === tab;
+
               return (
                 <button
                   key={tab}
+                  type="button"
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                    activeTab === tab
-                      ? 'bg-[#0B525B] text-white shadow-sm'
-                      : 'bg-[#FFFDF8] text-[#142326]/70 border border-[#0B525B]/10 hover:bg-[#F4F0E6]'
+                    isActive
+                      ? 'shadow-xs text-white'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
+                  style={{
+                    backgroundColor: isActive ? 'var(--role-accent, var(--cta))' : 'var(--surface)',
+                    borderColor: 'var(--border)',
+                    borderWidth: '1px',
+                    color: isActive ? '#ffffff' : 'var(--text)'
+                  }}
                 >
                   <span>{tab}</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                    activeTab === tab ? 'bg-white/20 text-white' : 'bg-[#142326]/10 text-[#142326]'
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700'
                   }`}>
                     {count}
                   </span>
@@ -130,7 +156,7 @@ export default function FacultyReportsPage() {
             })}
           </div>
 
-          <span className="text-xs font-mono text-[#142326]/50 hidden sm:inline">
+          <span className="text-xs font-mono opacity-60 hidden sm:inline" style={{ color: 'var(--text-muted)' }}>
             Academic Term 2026
           </span>
         </div>
@@ -141,40 +167,46 @@ export default function FacultyReportsPage() {
             const isPending = report.status === 'Pending';
             const isApproved = report.status === 'Approved';
             const isNeedsRevision = report.status === 'Needs Revision';
-            const isSelected = reviewingId === report.id;
 
             return (
               <motion.div
                 key={report.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-[#FFFDF8] rounded-2xl border border-[#0B525B]/15 shadow-sm p-6 space-y-4 transition-all hover:border-[#0B525B]/30"
+                className="card-modern rounded-2xl p-6 space-y-4"
               >
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#0B525B]/10 pb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#0B525B]/10 text-[#0B525B] font-bold text-xs flex items-center justify-center border border-[#0B525B]/20">
+                    <div 
+                      className="w-10 h-10 rounded-xl font-bold text-xs flex items-center justify-center border"
+                      style={{
+                        backgroundColor: 'var(--accent-soft)',
+                        color: 'var(--role-accent, var(--primary))',
+                        borderColor: 'var(--border)'
+                      }}
+                    >
                       {report.student.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm text-[#142326]">{report.student}</h3>
-                        <span className="text-xs font-mono text-[#142326]/50">({report.roll})</span>
+                        <h3 className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{report.student}</h3>
+                        <span className="text-xs font-mono text-slate-400">({report.roll})</span>
                       </div>
-                      <div className="text-xs text-[#142326]/65 flex items-center gap-2 mt-0.5">
+                      <div className="text-xs flex items-center gap-2 mt-0.5" style={{ color: 'var(--text-muted)' }}>
                         <span className="flex items-center gap-1"><Building2 size={12} /> {report.company}</span>
                         <span>•</span>
-                        <span className="font-mono text-[#0B525B] font-semibold">{report.week}</span>
+                        <span className="font-mono font-semibold" style={{ color: 'var(--role-accent, var(--cta))' }}>{report.week}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-[#142326]/50">{report.date}</span>
+                    <span className="text-xs font-mono text-slate-400">{report.date}</span>
                     <span className={`px-3 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 ${
-                      isPending ? 'bg-amber-100 text-amber-900 border border-amber-300' :
-                      isApproved ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' :
-                      'bg-rose-100 text-rose-900 border border-rose-300'
+                      isPending ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800' :
+                      isApproved ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800' :
+                      'bg-rose-100 text-rose-900 border border-rose-300 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-800'
                     }`}>
                       {isPending && <Clock size={12} />}
                       {isApproved && <CheckCircle2 size={12} />}
@@ -186,19 +218,27 @@ export default function FacultyReportsPage() {
 
                 {/* Excerpt */}
                 <div className="space-y-2">
-                  <span className="text-xs font-mono uppercase tracking-wider text-[#142326]/50 font-bold">Executive Summary</span>
-                  <p className="text-xs md:text-sm text-[#142326]/85 leading-relaxed bg-[#FBF9F4] p-3.5 rounded-xl border border-[#0B525B]/10">
+                  <span className="text-xs font-mono uppercase tracking-wider font-bold" style={{ color: 'var(--text-muted)' }}>
+                    Executive Summary
+                  </span>
+                  <p className="text-xs md:text-sm leading-relaxed p-3.5 rounded-xl border bg-slate-50/50 dark:bg-slate-800/30" style={{ borderColor: 'var(--border)' }}>
                     "{report.excerpt}"
                   </p>
                 </div>
 
                 {/* Tasks Completed */}
                 <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-[#142326]/50 font-bold block mb-2">Key Deliverables</span>
+                  <span className="text-xs font-mono uppercase tracking-wider font-bold block mb-2" style={{ color: 'var(--text-muted)' }}>
+                    Key Deliverables
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {report.tasksCompleted.map((task, i) => (
-                      <span key={i} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-white border border-[#0B525B]/15 text-[#142326]/80 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#0B525B]" />
+                      <span 
+                        key={i} 
+                        className="text-xs font-medium px-2.5 py-1 rounded-lg border flex items-center gap-1.5 bg-white dark:bg-slate-800"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         {task}
                       </span>
                     ))}
@@ -206,28 +246,33 @@ export default function FacultyReportsPage() {
                 </div>
 
                 {/* Action Area */}
-                <div className="pt-2 flex items-center justify-between border-t border-[#0B525B]/10">
+                <div className="pt-2 flex items-center justify-between border-t" style={{ borderColor: 'var(--border)' }}>
                   <button 
-                    onClick={() => setReviewingId(isSelected ? null : report.id)}
-                    className="text-xs font-semibold text-[#0B525B] hover:text-[#073940] flex items-center gap-1.5 cursor-pointer"
+                    type="button"
+                    onClick={() => setSelectedReportId(report.id)}
+                    className="text-xs font-semibold hover:opacity-80 flex items-center gap-1.5 cursor-pointer py-1.5 px-3 rounded-lg border transition-colors bg-slate-50 dark:bg-slate-800"
+                    style={{ borderColor: 'var(--border)', color: 'var(--role-accent, var(--cta))' }}
                   >
-                    <MessageSquare size={13} />
-                    <span>{isSelected ? 'Close Review Panel' : 'Add Faculty Feedback'}</span>
+                    <SlidersHorizontal size={13} />
+                    <span>Open Slide-Over Review</span>
                   </button>
 
                   <div className="flex items-center gap-2">
                     {isPending && (
                       <>
                         <button
-                          onClick={() => handleStatusChange(report.id, 'Needs Revision')}
-                          className="px-3 py-1.5 rounded-xl bg-white border border-rose-300 text-rose-700 text-xs font-medium hover:bg-rose-50 transition-colors flex items-center gap-1 cursor-pointer"
+                          type="button"
+                          onClick={() => handleRequestRevision(report.id, '')}
+                          className="px-3 py-1.5 rounded-lg border border-rose-300 text-rose-700 dark:border-rose-800 dark:text-rose-300 text-xs font-medium hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <X size={12} />
                           Request Revision
                         </button>
                         <button
-                          onClick={() => handleStatusChange(report.id, 'Approved')}
-                          className="px-4 py-1.5 rounded-xl bg-[#0B525B] text-white text-xs font-medium hover:bg-[#073940] transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+                          type="button"
+                          onClick={() => handleApprove(report.id)}
+                          className="px-4 py-1.5 rounded-lg text-white text-xs font-medium transition-transform active:scale-95 flex items-center gap-1 shadow-xs cursor-pointer"
+                          style={{ backgroundColor: 'var(--role-accent, var(--cta))' }}
                         >
                           <Check size={12} />
                           Approve Report
@@ -236,42 +281,20 @@ export default function FacultyReportsPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Inline Review Panel */}
-                <AnimatePresence>
-                  {isSelected && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="pt-4 border-t border-[#0B525B]/10 space-y-3"
-                    >
-                      <label className="text-xs font-mono font-semibold text-[#142326]/70 block">
-                        Academic Mentor Evaluation Notes:
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={feedbackText}
-                        onChange={(e) => setFeedbackText(e.target.value)}
-                        placeholder="Write constructive remarks or technical advice for the student..."
-                        className="w-full bg-white border border-[#142326]/20 rounded-xl p-3 text-xs text-[#142326] focus:outline-none focus:border-[#0B525B] focus:ring-2 focus:ring-[#0B525B]/20"
-                      />
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => handleStatusChange(report.id, 'Approved')}
-                          className="px-4 py-2 rounded-xl bg-[#0B525B] text-white text-xs font-medium hover:bg-[#073940]"
-                        >
-                          Save & Approve Report
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             );
           })}
         </div>
       </main>
+
+      {/* Slide-over Drawer */}
+      <ReviewDrawer
+        isOpen={Boolean(selectedReportId)}
+        onClose={() => setSelectedReportId(null)}
+        data={drawerData}
+        onApprove={handleApprove}
+        onRequestRevision={handleRequestRevision}
+      />
     </div>
   );
 }

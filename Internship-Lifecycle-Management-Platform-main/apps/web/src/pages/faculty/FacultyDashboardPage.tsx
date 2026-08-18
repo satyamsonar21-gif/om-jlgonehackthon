@@ -111,23 +111,8 @@ export default function FacultyDashboardPage() {
           </div>
 
           {/* Right Column: Live Constellation Canvas */}
-          <div className="lg:col-span-7 rounded-xl border p-4 flex flex-col justify-between" style={{ backgroundColor: 'var(--surface-muted)', borderColor: 'var(--border)' }}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: 'var(--highlights)' }}>
-                Student Health Telemetry Map
-              </span>
-              <span className="text-[11px] font-mono opacity-60">Interactive Radar</span>
-            </div>
-            
-            <div className="h-64 sm:h-72 w-full rounded-lg overflow-hidden relative">
-              <ConstellationCanvas />
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] font-mono mt-3 pt-2 border-t" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-              <span>● Green: Optimal Progress</span>
-              <span>● Yellow: Report Due</span>
-              <span>● Red: Attendance Alert</span>
-            </div>
+          <div className="lg:col-span-7 flex flex-col justify-between">
+            <ConstellationCanvas className="h-full min-h-[320px]" />
           </div>
         </motion.div>
 

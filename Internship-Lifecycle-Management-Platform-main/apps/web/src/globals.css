@@ -1,118 +1,188 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lato:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&family=Titillium+Web:wght@600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-:root {
-  /* Default (Student: Earthy Sand & Roast Espresso) */
-  --bg: #F3E9DD;
-  --surface: #FFFFFF;
-  --surface-muted: #E6D5C1;
-  --border: #E6D5C1;
-  --text: #6B4E3D;
-  --text-muted: #8C7362;
-  --primary: #6B4E3D;
-  --primary-hover: #523B2E;
-  --secondary: #A67C52;
-  --highlights: #A67C52;
-  --accent-soft: #F3E9DD;
-  --cta: #A67C52;
-  --cta-hover: #8C6540;
-  --cta-text: #FFFFFF;
-  --ring-color: rgba(166, 124, 82, 0.3);
-  --font-display: 'Poppins', sans-serif;
-  --font-body: 'Lato', 'Inter', sans-serif;
-}
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+    
+    /* Default / Neutral Surfaces */
+    --bg-canvas: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-surface-hover: #f1f5f9;
+    --border-subtle: rgba(148, 163, 184, 0.2);
+    --border-strong: rgba(148, 163, 184, 0.4);
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-subtle: #94a3b8;
 
-:root[data-role="student"] {
-  --bg: #F3E9DD;
-  --surface: #FFFFFF;
-  --surface-muted: #E6D5C1;
-  --border: #E6D5C1;
-  --text: #6B4E3D;
-  --text-muted: #8C7362;
-  --primary: #6B4E3D;
-  --primary-hover: #523B2E;
-  --secondary: #A67C52;
-  --highlights: #A67C52;
-  --accent-soft: #F3E9DD;
-  --cta: #A67C52;
-  --cta-hover: #8C6540;
-  --cta-text: #FFFFFF;
-  --ring-color: rgba(166, 124, 82, 0.3);
-  --font-display: 'Poppins', sans-serif;
-  --font-body: 'Lato', 'Inter', sans-serif;
-}
+    /* Base theme compatibility mapping */
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-muted: #f1f5f9;
+    --border: rgba(148, 163, 184, 0.2);
+    --text: #0f172a;
+    --primary: #0f172a;
+    --primary-hover: #1e293b;
+    --secondary: #c2410c;
+    --highlights: #c2410c;
+    --accent-soft: #ffedd5;
+    --cta: #c2410c;
+    --cta-hover: #9a3412;
+    --cta-text: #ffffff;
+    --ring-color: rgba(194, 65, 12, 0.4);
+    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
 
-:root[data-role="faculty"] {
-  --bg: #F4F8F6;
-  --surface: #FFFFFF;
-  --surface-muted: #E8F2EC;
-  --border: #D0E4D8;
-  --text: #0D2B20;
-  --text-muted: #3A6351;
-  --primary: #1B4322;
-  --primary-hover: #143319;
-  --secondary: #038666;
-  --highlights: #038666;
-  --accent-soft: #E6F4EA;
-  --cta: #FBB02D;
-  --cta-hover: #F59E0B;
-  --cta-text: #081C15;
-  --ring-color: rgba(3, 134, 102, 0.25);
-  --font-display: 'Lora', Georgia, serif;
-  --font-body: 'Open Sans', 'Inter', sans-serif;
-}
+  /* 🎓 Student Portal Theme: Slate & Deep Terracotta */
+  [data-role="student"] {
+    --role-primary: #0f172a;
+    --role-primary-foreground: #ffffff;
+    --role-accent: #c2410c; /* Deep terracotta / amber */
+    --role-accent-subtle: #ffedd5;
+    --role-badge-bg: #fed7aa;
+    --role-badge-text: #7c2d12;
+    --ring-focus: rgba(194, 65, 12, 0.4);
 
-:root[data-role="company"],
-:root[data-role="mentor"] {
-  --bg: #FFF8F0;
-  --surface: #FFFFFF;
-  --surface-muted: #FAF0E6;
-  --border: #E2D9D2;
-  --text: #1E1428;
-  --text-muted: #6E6766;
-  --primary: #5400DE;
-  --primary-hover: #4200B3;
-  --secondary: #9E2A2B;
-  --highlights: #E089F3;
-  --accent-soft: #F8E9FC;
-  --cta: #5400DE;
-  --cta-hover: #4200B3;
-  --cta-text: #FFFFFF;
-  --ring-color: rgba(84, 0, 222, 0.25);
-  --font-display: 'DM Serif Display', Georgia, serif;
-  --font-body: 'Inter', sans-serif;
-}
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-muted: #ffedd5;
+    --border: rgba(148, 163, 184, 0.25);
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --primary: #0f172a;
+    --primary-hover: #1e293b;
+    --secondary: #c2410c;
+    --highlights: #c2410c;
+    --accent-soft: #ffedd5;
+    --cta: #c2410c;
+    --cta-hover: #9a3412;
+    --cta-text: #ffffff;
+    --ring-color: rgba(194, 65, 12, 0.4);
+    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
 
-:root[data-role="admin"] {
-  --bg: #F2F7FB;
-  --surface: #FFFFFF;
-  --surface-muted: #D6E6F2;
-  --border: #D6E6F2;
-  --text: #0F2942;
-  --text-muted: #486581;
-  --primary: #1E3A5F;
-  --primary-hover: #132742;
-  --secondary: #8DB4D6;
-  --highlights: #8DB4D6;
-  --accent-soft: #D6E6F2;
-  --cta: #8DB4D6;
-  --cta-hover: #729FC4;
-  --cta-text: #0F2942;
-  --ring-color: rgba(141, 180, 214, 0.4);
-  --font-display: 'Titillium Web', 'Plus Jakarta Sans', sans-serif;
-  --font-body: 'Lato', 'Inter', sans-serif;
+  /* 👨‍🏫 Faculty Portal Theme: Deep Forest & Emerald */
+  [data-role="faculty"] {
+    --role-primary: #064e3b;
+    --role-primary-foreground: #ffffff;
+    --role-accent: #059669; /* Emerald */
+    --role-accent-subtle: #d1fae5;
+    --role-badge-bg: #a7f3d0;
+    --role-badge-text: #065f46;
+    --ring-focus: rgba(5, 150, 105, 0.4);
+
+    --bg: #f4fbf7;
+    --surface: #ffffff;
+    --surface-muted: #d1fae5;
+    --border: rgba(5, 150, 105, 0.22);
+    --text: #064e3b;
+    --text-muted: #065f46;
+    --primary: #064e3b;
+    --primary-hover: #022c22;
+    --secondary: #059669;
+    --highlights: #059669;
+    --accent-soft: #d1fae5;
+    --cta: #059669;
+    --cta-hover: #047857;
+    --cta-text: #ffffff;
+    --ring-color: rgba(5, 150, 105, 0.4);
+    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  /* 🏢 Company Portal Theme: Indigo & Obsidian */
+  [data-role="company"],
+  [data-role="mentor"] {
+    --role-primary: #1e1b4b;
+    --role-primary-foreground: #ffffff;
+    --role-accent: #4f46e5; /* Royal Indigo */
+    --role-accent-subtle: #e0e7ff;
+    --role-badge-bg: #c7d2fe;
+    --role-badge-text: #3730a3;
+    --ring-focus: rgba(79, 70, 229, 0.4);
+
+    --bg: #f8faff;
+    --surface: #ffffff;
+    --surface-muted: #e0e7ff;
+    --border: rgba(79, 70, 229, 0.22);
+    --text: #1e1b4b;
+    --text-muted: #4338ca;
+    --primary: #1e1b4b;
+    --primary-hover: #0f0e26;
+    --secondary: #4f46e5;
+    --highlights: #4f46e5;
+    --accent-soft: #e0e7ff;
+    --cta: #4f46e5;
+    --cta-hover: #4338ca;
+    --cta-text: #ffffff;
+    --ring-color: rgba(79, 70, 229, 0.4);
+    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  /* 🛡️ Admin Portal Theme: Midnight Steel & Azure */
+  [data-role="admin"] {
+    --role-primary: #0f172a;
+    --role-primary-foreground: #ffffff;
+    --role-accent: #0284c7; /* Sky / Azure */
+    --role-accent-subtle: #e0f2fe;
+    --role-badge-bg: #bae6fd;
+    --role-badge-text: #0369a1;
+    --ring-focus: rgba(2, 132, 199, 0.4);
+
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-muted: #e0f2fe;
+    --border: rgba(2, 132, 199, 0.22);
+    --text: #0f172a;
+    --text-muted: #0369a1;
+    --primary: #0f172a;
+    --primary-hover: #0284c7;
+    --secondary: #0284c7;
+    --highlights: #0284c7;
+    --accent-soft: #e0f2fe;
+    --cta: #0284c7;
+    --cta-hover: #0369a1;
+    --cta-text: #ffffff;
+    --ring-color: rgba(2, 132, 199, 0.4);
+    --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  /* Dark Mode Adjustments */
+  .dark,
+  [data-theme="dark"] {
+    --bg-canvas: #090d16;
+    --bg-surface: #111827;
+    --bg-surface-hover: #1e293b;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-subtle: #64748b;
+
+    --bg: #090d16;
+    --surface: #111827;
+    --surface-muted: #1e293b;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #f8fafc;
+  }
 }
 
 /* 1. Global Typography & Font Rules */
 html {
   font-family: var(--font-body, 'Inter', sans-serif);
   scroll-behavior: smooth;
-  background-color: var(--bg);
+  background-color: var(--bg, #f8fafc);
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: var(--bg, #f8fafc);
+  color: var(--text, #0f172a);
   font-family: var(--font-body, 'Inter', sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -120,37 +190,24 @@ body {
   line-height: 1.55;
 }
 
-/* Headings automatically use the role-specific display typeface */
+/* Headings automatically use unified clean sans display typeface */
 h1, h2, h3, .font-display {
   font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
 }
 
 /* Explicit font family utility classes */
-.font-poppins {
-  font-family: 'Poppins', sans-serif;
-}
-.font-lora {
-  font-family: 'Lora', Georgia, serif;
-}
-.font-dm-serif {
-  font-family: 'DM Serif Display', Georgia, serif;
-}
-.font-titillium {
-  font-family: 'Titillium Web', sans-serif;
-}
-.font-lato {
-  font-family: 'Lato', sans-serif;
-}
-.font-opensans {
-  font-family: 'Open Sans', sans-serif;
-}
 .font-inter {
   font-family: 'Inter', sans-serif;
 }
-
-/* Monospace font for telemetry, codes, badges */
+.font-jakarta {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+/* Reserved strictly for digital certificates */
+.font-dm-serif, .certificate-serif {
+  font-family: 'DM Serif Display', Georgia, serif;
+}
 .font-mono {
-  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
 }
 
 /* Strict Type Tracking */
@@ -164,10 +221,23 @@ h1, h2, h3, .font-display {
   letter-spacing: 0.025em;
 }
 
-/* 2. Layered Elevation & Shadows */
+/* 2. Reusable Modern Elevation & Micro-Interaction Classes */
+.card-modern {
+  background-color: var(--bg-surface, var(--surface, #ffffff));
+  border: 1px solid var(--border-subtle, var(--border, rgba(148, 163, 184, 0.2)));
+  border-radius: var(--radius, 0.75rem);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-modern:hover {
+  border-color: var(--border-strong, rgba(148, 163, 184, 0.4));
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06);
+}
+
 .card-elevated {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
+  background-color: var(--surface, #ffffff);
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
   border-radius: 1rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 
               0 4px 8px -2px rgba(0, 0, 0, 0.02);
@@ -180,35 +250,31 @@ h1, h2, h3, .font-display {
               0 12px 20px -3px rgba(0, 0, 0, 0.05);
 }
 
-/* Inner Top Bevel Highlight for Depth */
-.inner-bevel {
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+.btn-primary {
+  background-color: var(--role-accent, var(--cta, #c2410c));
+  color: #ffffff;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
-/* 3. Micro-Interactions: Tactile Active Depression */
-button, a.btn, input[type="button"], input[type="submit"] {
-  transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
+.btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-0.5px);
 }
 
-button:active, a.btn:active {
+.btn-primary:active {
   transform: scale(0.98);
 }
 
-/* 4. Smooth Form Focus States with Offset Ring */
-input, textarea, select {
-  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
-}
-
-input:focus, textarea:focus, select:focus, .input-focus-ring:focus {
-  outline: none;
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px var(--ring-color) !important;
-}
-
-/* Role Specific CTA Button with Top Inner Glow */
 .btn-cta {
-  background-color: var(--cta);
-  color: var(--cta-text);
+  background-color: var(--cta, var(--role-accent));
+  color: var(--cta-text, #ffffff);
   font-weight: 700;
   border-radius: 0.75rem;
   padding: 0.625rem 1.25rem;
@@ -217,13 +283,29 @@ input:focus, textarea:focus, select:focus, .input-focus-ring:focus {
 }
 
 .btn-cta:hover {
-  background-color: var(--cta-hover);
+  background-color: var(--cta-hover, var(--role-accent));
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
 }
 
 .btn-cta:active {
   transform: scale(0.98);
+}
+
+.tabular-numbers {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Form focus states */
+input, textarea, select {
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+input:focus, textarea:focus, select:focus, .input-focus-ring:focus {
+  outline: none;
+  border-color: var(--role-accent, var(--primary)) !important;
+  box-shadow: 0 0 0 3px var(--ring-color, var(--ring-focus, rgba(194, 65, 12, 0.3))) !important;
 }
 
 /* Custom Scrollbar */

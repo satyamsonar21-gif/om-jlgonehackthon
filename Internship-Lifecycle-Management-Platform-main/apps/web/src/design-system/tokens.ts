@@ -33,25 +33,25 @@ export const themes: Record<RoleKey, RoleTheme> = {
     label: 'Student',
     iconName: 'GraduationCap',
     tagline: 'Learning progress, tasks & milestone achievements',
-    primary: '#6B4E3D',          // Deep roast espresso coffee
-    primaryHover: '#523B2E',
-    secondary: '#A67C52',        // Warm caramel / golden mocha
-    accentSoft: '#F3E9DD',       // Warm cream linen
-    highlights: '#A67C52',       // Caramel highlight
-    cta: '#A67C52',              // CTA button
-    ctaHover: '#8C6540',
-    ctaText: '#FFFFFF',          // Crisp white text on caramel
-    bg: '#F3E9DD',               // Primary warm cream background
-    surface: '#FFFFFF',          // Pure white cards
-    surfaceMuted: '#E6D5C1',     // Warm sand oat
-    border: '#E6D5C1',           // Warm sand border
-    text: '#6B4E3D',             // Deep roast espresso text
-    textMuted: '#8C7362',        // Soft coffee muted text
-    ring: 'rgba(166, 124, 82, 0.3)',
-    badgeBg: '#E6D5C1',
-    badgeText: '#6B4E3D',
-    fontDisplay: "'Poppins', sans-serif",
-    fontBody: "'Lato', 'Inter', sans-serif",
+    primary: '#0f172a',          // Slate 900
+    primaryHover: '#1e293b',
+    secondary: '#c2410c',        // Deep terracotta
+    accentSoft: '#ffedd5',
+    highlights: '#c2410c',
+    cta: '#c2410c',              // High contrast terracotta CTA
+    ctaHover: '#9a3412',
+    ctaText: '#ffffff',
+    bg: '#f8fafc',
+    surface: '#ffffff',
+    surfaceMuted: '#ffedd5',
+    border: 'rgba(148, 163, 184, 0.25)',
+    text: '#0f172a',
+    textMuted: '#64748b',
+    ring: 'rgba(194, 65, 12, 0.4)',
+    badgeBg: '#fed7aa',
+    badgeText: '#7c2d12',
+    fontDisplay: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    fontBody: "'Inter', sans-serif",
     isDark: false,
   },
   faculty: {
@@ -59,25 +59,25 @@ export const themes: Record<RoleKey, RoleTheme> = {
     label: 'Faculty',
     iconName: 'BookOpen',
     tagline: 'Evaluation matrices, reviews & academic guidance',
-    primary: '#1B4322',          // Emerald Green main brand
-    primaryHover: '#143319',
-    secondary: '#038666',        // Secondary Teal Emerald
-    accentSoft: '#E6F4EA',
-    highlights: '#038666',       // Highlights
-    cta: '#FBB02D',              // CTA Buttons (Warm Amber Gold)
-    ctaHover: '#F59E0B',
-    ctaText: '#081C15',          // Dark forest contrast text
-    bg: '#F4F8F6',               // Clean light sage-white background
-    surface: '#FFFFFF',          // Pure white cards
-    surfaceMuted: '#E8F2EC',     // Soft sage surface
-    border: '#D0E4D8',           // Soft sage border
-    text: '#0D2B20',             // Deep forest dark text
-    textMuted: '#3A6351',        // Muted forest text
-    ring: 'rgba(3, 134, 102, 0.25)',
-    badgeBg: '#E0F0E6',
-    badgeText: '#1B4322',
-    fontDisplay: "'Lora', Georgia, serif",
-    fontBody: "'Open Sans', 'Inter', sans-serif",
+    primary: '#064e3b',          // Deep forest
+    primaryHover: '#022c22',
+    secondary: '#059669',        // Emerald
+    accentSoft: '#d1fae5',
+    highlights: '#059669',
+    cta: '#059669',              // High contrast Emerald CTA
+    ctaHover: '#047857',
+    ctaText: '#ffffff',
+    bg: '#f4fbf7',
+    surface: '#ffffff',
+    surfaceMuted: '#d1fae5',
+    border: 'rgba(5, 150, 105, 0.22)',
+    text: '#064e3b',
+    textMuted: '#065f46',
+    ring: 'rgba(5, 150, 105, 0.4)',
+    badgeBg: '#a7f3d0',
+    badgeText: '#065f46',
+    fontDisplay: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    fontBody: "'Inter', sans-serif",
     isDark: false,
   },
   company: {
@@ -85,24 +85,24 @@ export const themes: Record<RoleKey, RoleTheme> = {
     label: 'Company Mentor',
     iconName: 'Building2',
     tagline: 'Industry projects, candidate reviews & team milestones',
-    primary: '#5400DE',          // Primary vibrant violet
-    primaryHover: '#4200B3',
-    secondary: '#9E2A2B',        // Secondary crimson maroon
-    accentSoft: '#F8E9FC',
-    highlights: '#E089F3',       // Accent/CTA
-    cta: '#5400DE',              // CTA Buttons (Royal Violet)
-    ctaHover: '#4200B3',
-    ctaText: '#FFFFFF',          // Pure white text on CTA
-    bg: '#FFF8F0',               // Warm soft ivory canvas
-    surface: '#FFFFFF',          // Crisp white cards
-    surfaceMuted: '#FAF0E6',     // Warm cream surface
-    border: '#E2D9D2',           // Muted borders
-    text: '#1E1428',             // Deep contrast text on light bg
-    textMuted: '#6E6766',        // Muted gray-brown text
-    ring: 'rgba(84, 0, 222, 0.25)',
-    badgeBg: '#F5E6FB',
-    badgeText: '#5400DE',
-    fontDisplay: "'DM Serif Display', Georgia, serif",
+    primary: '#1e1b4b',          // Obsidian indigo
+    primaryHover: '#0f0e26',
+    secondary: '#4f46e5',        // Royal indigo
+    accentSoft: '#e0e7ff',
+    highlights: '#4f46e5',
+    cta: '#4f46e5',              // Royal indigo CTA
+    ctaHover: '#4338ca',
+    ctaText: '#ffffff',
+    bg: '#f8faff',
+    surface: '#ffffff',
+    surfaceMuted: '#e0e7ff',
+    border: 'rgba(79, 70, 229, 0.22)',
+    text: '#1e1b4b',
+    textMuted: '#4338ca',
+    ring: 'rgba(79, 70, 229, 0.4)',
+    badgeBg: '#c7d2fe',
+    badgeText: '#3730a3',
+    fontDisplay: "'Plus Jakarta Sans', 'Inter', sans-serif",
     fontBody: "'Inter', sans-serif",
     isDark: false,
   },
@@ -111,25 +111,25 @@ export const themes: Record<RoleKey, RoleTheme> = {
     label: 'Administrator',
     iconName: 'Shield',
     tagline: 'Institutional governance, access control & audit logs',
-    primary: '#1E3A5F',          // Deep steel navy main brand
-    primaryHover: '#132742',
-    secondary: '#8DB4D6',        // Steel sky blue
-    accentSoft: '#D6E6F2',       // Soft ice blue
-    highlights: '#8DB4D6',       // Sky blue highlight
-    cta: '#8DB4D6',              // CTA Buttons (Steel Sky Blue)
-    ctaHover: '#729FC4',
-    ctaText: '#0F2942',          // Deep steel navy contrast text
-    bg: '#F2F7FB',               // Crisp ice-blue white canvas
-    surface: '#FFFFFF',          // Crisp pure white cards
-    surfaceMuted: '#D6E6F2',     // Soft ice blue section background
-    border: '#D6E6F2',           // Soft ice blue border
-    text: '#0F2942',             // Deep steel navy text
-    textMuted: '#486581',        // Slate steel muted text
-    ring: 'rgba(141, 180, 214, 0.4)',
-    badgeBg: '#D6E6F2',          // Soft ice blue badge
-    badgeText: '#0F2942',        // Deep steel navy text
-    fontDisplay: "'Titillium Web', 'Plus Jakarta Sans', sans-serif",
-    fontBody: "'Lato', 'Inter', sans-serif",
+    primary: '#0f172a',          // Midnight steel
+    primaryHover: '#0284c7',
+    secondary: '#0284c7',        // Azure Sky
+    accentSoft: '#e0f2fe',
+    highlights: '#0284c7',
+    cta: '#0284c7',              // Azure Sky CTA
+    ctaHover: '#0369a1',
+    ctaText: '#ffffff',
+    bg: '#f8fafc',
+    surface: '#ffffff',
+    surfaceMuted: '#e0f2fe',
+    border: 'rgba(2, 132, 199, 0.22)',
+    text: '#0f172a',
+    textMuted: '#0369a1',
+    ring: 'rgba(2, 132, 199, 0.4)',
+    badgeBg: '#bae6fd',
+    badgeText: '#0369a1',
+    fontDisplay: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    fontBody: "'Inter', sans-serif",
     isDark: false,
   },
 };
