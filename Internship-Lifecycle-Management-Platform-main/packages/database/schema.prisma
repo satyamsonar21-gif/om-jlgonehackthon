@@ -54,30 +54,42 @@ model Company {
 }
 
 model User {
-  id                      String    @id @default(uuid())
-  clerkId                 String    @unique
-  email                   String    @unique
-  passwordHash            String?
-  role                    String    @default("STUDENT") // STUDENT, COMPANY, FACULTY_MENTOR, TNP_ADMIN, HOD_ADMIN, SUPER_ADMIN, ADMIN
-  status                  String    @default("ACTIVE") // ACTIVE, PENDING_APPROVAL, SUSPENDED
-  isEmailVerified         Boolean   @default(true)
-  emailVerificationCode   String?
+  id                       String    @id @default(uuid())
+  clerkId                  String?   @unique
+  email                    String    @unique
+  passwordHash             String?
+  role                     String    @default("STUDENT") // STUDENT, FACULTY, FACULTY_MENTOR, COMPANY, COMPANY_MENTOR, TNP_ADMIN, HOD_ADMIN, SUPER_ADMIN, ADMIN
+  status                   String    @default("ACTIVE") // ACTIVE, PENDING_APPROVAL, SUSPENDED
+  isActive                 Boolean   @default(true)
+  isEmailVerified          Boolean   @default(false)
+  emailVerified            DateTime?
+  emailVerificationCode    String?
   emailVerificationExpires DateTime?
-  resetToken              String?
-  resetTokenExpires       DateTime?
-  name                    String
-  phone                   String?
-  profilePhoto            String?
-  collegeId               String?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  resetToken               String?
+  resetTokenExpires        DateTime?
+  firstName                String?
+  lastName                 String?
+  name                     String
+  phone                    String?
+  profilePhoto             String?
+  collegeId                String?
+  lastLoginAt              DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  student           Student?
-  faculty           Faculty?
-  companyMentor     CompanyMentor?
-  notifications     Notification[]
-  auditLogs         AuditLog[]
-  documentsUploaded Document[]     @relation("DocumentUploader")
+  student                 Student?
+  faculty                 Faculty?
+  companyMentor           CompanyMentor?
+  sessions                Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  documentsUploaded       Document[]     @relation("DocumentUploader")
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
 }
 
 model Student {
@@ -586,3 +598,50 @@ model AIRecommendation {
 
   @@unique([studentId, listingId])
 }
+
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  sessionTokenHash String    @unique
+  expiresAt        DateTime
+  lastUsedAt       DateTime  @default(now())
+  ipAddress        String?
+  userAgent        String?
+  isValid          Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionTokenHash])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+

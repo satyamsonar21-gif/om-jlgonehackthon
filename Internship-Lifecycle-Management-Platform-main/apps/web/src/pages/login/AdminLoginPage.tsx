@@ -4,16 +4,33 @@ import { ArrowLeft, Shield, Lock, Mail, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { useAuth, getRoleDashboardPath } from '@/lib/auth';
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin.root@institution.edu');
-  const [password, setPassword] = useState('demo123456');
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Signed in as University Super Administrator');
-    navigate('/admin');
+    if (!email.trim() || !password.trim()) {
+      toast.error('Please enter both your administrator email and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await login({ email: email.trim(), password: password.trim() });
+      const userRole = res?.user?.role || res?.role || 'ADMIN';
+      const targetPath = getRoleDashboardPath(userRole, res?.status);
+      navigate(targetPath);
+    } catch {
+      // Handled in AuthProvider toast
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,14 +54,11 @@ export default function AdminLoginPage() {
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900">
-            <span className="font-bold">Demo Account:</span> Pre-loaded with Institutional Root Administrator.
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Administrator Email / Key ID"
               type="email"
+              placeholder="e.g. admin@institution.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               leftIcon={<Mail size={15} />}
@@ -54,13 +68,14 @@ export default function AdminLoginPage() {
             <Input
               label="Access Password"
               type="password"
+              placeholder="Enter your administrator password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               leftIcon={<Lock size={15} />}
               required
             />
 
-            <Button type="submit" variant="primary" size="md" className="w-full bg-sky-600 hover:bg-sky-700" rightIcon={<ArrowRight size={14} />}>
+            <Button type="submit" variant="primary" size="md" className="w-full bg-sky-600 hover:bg-sky-700" loading={loading} rightIcon={<ArrowRight size={14} />}>
               Enter Administration Control
             </Button>
           </form>

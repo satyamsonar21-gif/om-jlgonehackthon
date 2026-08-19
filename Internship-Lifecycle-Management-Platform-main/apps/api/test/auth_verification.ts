@@ -178,12 +178,15 @@ async function runAuthTests() {
     console.log('\n🔹 Test Suite 6: Forgot & Reset Password Flow');
     const forgotResult = await authService.forgotPassword(studentEmail);
     assert(Boolean(forgotResult.success), 'Password reset code generated and dispatched');
-    assert(Boolean(forgotResult.resetToken), '6-digit reset token generated with 15-minute expiration');
+
+    const dbUserForReset = await prisma.user.findUnique({ where: { email: studentEmail } });
+    const resetCode = dbUserForReset?.resetToken;
+    assert(Boolean(resetCode), '6-digit reset token generated with 15-minute expiration');
 
     const newPassword = 'BrandNewPassword2026!';
     const resetResult = await authService.resetPassword({
       email: studentEmail,
-      token: forgotResult.resetToken!,
+      code: resetCode!,
       newPassword,
     });
     assert(Boolean(resetResult.success), 'Password reset completed with valid token');
@@ -193,9 +196,10 @@ async function runAuthTests() {
 
     // ─── SUITE 7: EMAIL VERIFICATION ──────────────────────────────────────────
     console.log('\n🔹 Test Suite 7: Email Verification Engine');
+    const dbUserForVerify = await prisma.user.findUnique({ where: { email: studentEmail } });
     const verifyResult = await authService.verifyEmail({
       email: studentEmail,
-      code: '123456',
+      code: dbUserForVerify?.emailVerificationCode || '123456',
     });
     assert(Boolean(verifyResult.success), 'Email address verified with valid code');
 

@@ -203,7 +203,7 @@ export default function LandingPage() {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
             <Link to="/sign-in" className="w-full sm:w-auto">
               <Button variant="primary" size="lg" className="w-full sm:w-auto" rightIcon={<ArrowRight size={16} />}>
-                Launch Demonstration Portal
+                Enter Institutional Portal
               </Button>
             </Link>
             <a href="#how-it-works" className="w-full sm:w-auto">
@@ -429,7 +429,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
               <Link to="/sign-in" className="w-full sm:w-auto">
                 <Button variant="primary" size="md" className="w-full sm:w-auto" rightIcon={<ArrowRight size={14} />}>
-                  Explore Stage 0{selectedLifecycle.step} in Demo
+                  Access Stage 0{selectedLifecycle.step} Portal
                 </Button>
               </Link>
             </div>

@@ -4,23 +4,15 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // Enables automatic HttpOnly cookie transmission
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Automatically inject stored role and token into request headers
+// Optional Bearer token injection if token is stored in memory/storage
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('ilmp_token');
-  const role = localStorage.getItem('ilmp_active_role') || 'student';
-  const userId = localStorage.getItem('ilmp_user_id');
-
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (role) {
-    config.headers['x-demo-role'] = role;
-  }
-  if (userId) {
-    config.headers['x-demo-user-id'] = userId;
   }
   return config;
 });
@@ -53,10 +45,8 @@ export const api = {
   resendVerification: (email: string) => apiClient.post('/auth/resend-verification', { email }),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     apiClient.post('/auth/change-password', data),
-  getDemoUsers: () => apiClient.get('/auth/demo-users'),
-  switchRole: (role: string) => apiClient.post('/auth/switch-role', { role }),
-  syncUser: (data: any) => apiClient.post('/auth/sync-user', data),
   getMe: () => apiClient.get('/auth/me'),
+  logout: () => apiClient.post('/auth/logout'),
 
   // Students
   getStudents: (params?: any) => apiClient.get('/students', { params }),

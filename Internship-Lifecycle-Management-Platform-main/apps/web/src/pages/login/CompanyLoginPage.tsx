@@ -4,16 +4,33 @@ import { ArrowLeft, Building2, Lock, Mail, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { useAuth, getRoleDashboardPath } from '@/lib/auth';
 
 export default function CompanyLoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('mentor@techcorp.com');
-  const [password, setPassword] = useState('demo123456');
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Signed in as Siddharth Nambiar (Company Mentor)');
-    navigate('/company');
+    if (!email.trim() || !password.trim()) {
+      toast.error('Please enter both your work email and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await login({ email: email.trim(), password: password.trim() });
+      const userRole = res?.user?.role || res?.role || 'COMPANY';
+      const targetPath = getRoleDashboardPath(userRole, res?.status);
+      navigate(targetPath);
+    } catch {
+      // Handled in AuthProvider toast
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,14 +54,11 @@ export default function CompanyLoginPage() {
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900">
-            <span className="font-bold">Demo Account:</span> Pre-loaded with TechCorp Solutions Mentor.
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Work Email Address"
               type="email"
+              placeholder="e.g. mentor@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               leftIcon={<Mail size={15} />}
@@ -54,13 +68,14 @@ export default function CompanyLoginPage() {
             <Input
               label="Password"
               type="password"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               leftIcon={<Lock size={15} />}
               required
             />
 
-            <Button type="submit" variant="primary" size="md" className="w-full bg-indigo-600 hover:bg-indigo-700" rightIcon={<ArrowRight size={14} />}>
+            <Button type="submit" variant="primary" size="md" className="w-full bg-indigo-600 hover:bg-indigo-700" loading={loading} rightIcon={<ArrowRight size={14} />}>
               Enter Company Mission Control
             </Button>
           </form>

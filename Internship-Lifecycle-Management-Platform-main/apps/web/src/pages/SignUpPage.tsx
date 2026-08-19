@@ -30,6 +30,7 @@ import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Progress } from '@/components/ui/Progress';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
 type AccountType = 'STUDENT' | 'FACULTY' | 'COMPANY';
@@ -145,22 +146,30 @@ export default function SignUpPage() {
       return;
     }
 
+    const fullName = studentData.name.trim();
+    const [firstName, ...restParts] = fullName.split(' ');
+    const lastName = restParts.join(' ') || firstName || 'Student';
+
     setLoading(true);
     try {
       await registerStudent({
-        name: studentData.name,
-        email: studentData.email,
+        firstName,
+        lastName,
+        name: fullName,
+        email: studentData.email.trim(),
         phone: studentData.phone,
         password: studentData.password,
-        studentId: studentData.studentId,
+        confirmPassword: studentData.confirmPassword,
+        studentId: studentData.studentId.trim(),
+        enrollmentNumber: studentData.studentId.trim(),
         department: studentData.department,
-        year: Number(studentData.year),
-        semester: Number(studentData.semester),
+        year: Number(studentData.year) || 1,
+        semester: Number(studentData.semester) || 1,
         collegeName: studentData.collegeName,
         skills: studentData.skills,
         resumeUrl: studentData.resumeUrl || 'https://storage.ilmp.edu/resumes/default_resume.pdf',
-        cgpa: Number(studentData.cgpa),
-        passingYear: Number(studentData.passingYear),
+        cgpa: Number(studentData.cgpa) || 8.0,
+        passingYear: Number(studentData.passingYear) || 2026,
       });
       setStudentStep(5); // Move to Verification code step
     } catch (err: any) {
@@ -182,14 +191,22 @@ export default function SignUpPage() {
       return;
     }
 
+    const fullName = facultyData.name.trim();
+    const [firstName, ...restParts] = fullName.split(' ');
+    const lastName = restParts.join(' ') || firstName || 'Faculty';
+
     setLoading(true);
     try {
       await registerFaculty({
-        name: facultyData.name,
-        email: facultyData.email,
+        firstName,
+        lastName,
+        name: fullName,
+        email: facultyData.email.trim(),
         phone: facultyData.phone,
         password: facultyData.password,
-        facultyId: facultyData.facultyId,
+        confirmPassword: facultyData.confirmPassword,
+        facultyId: facultyData.facultyId.trim(),
+        employeeId: facultyData.facultyId.trim(),
         department: facultyData.department,
         designation: facultyData.designation,
         collegeName: facultyData.collegeName,
@@ -214,19 +231,29 @@ export default function SignUpPage() {
       return;
     }
 
+    const contactName = (companyData.contactPerson || companyData.name || '').trim();
+    const [firstName, ...restParts] = contactName.split(' ');
+    const lastName = restParts.join(' ') || firstName || 'Mentor';
+
     setLoading(true);
     try {
       await registerCompany({
-        name: companyData.name,
-        email: companyData.contactEmail,
+        firstName,
+        lastName,
+        name: contactName,
+        email: (companyData.contactEmail || companyData.name || '').trim(),
+        company: companyData.name,
         domain: companyData.domain,
         website: companyData.website,
         contactPerson: companyData.contactPerson,
         contactEmail: companyData.contactEmail,
         contactPhone: companyData.contactPhone,
+        phone: companyData.contactPhone,
         location: companyData.location,
         description: companyData.description,
+        designation: 'Corporate Mentor',
         password: companyData.password,
+        confirmPassword: companyData.confirmPassword,
       });
       navigate('/pending-approval');
     } catch (err: any) {
@@ -708,9 +735,16 @@ export default function SignUpPage() {
                     variant="primary"
                     size="lg"
                     className="w-full"
-                    onClick={() => {
-                      toast.success('Email confirmed! Welcome to ILMP.');
-                      navigate('/student');
+                    onClick={async () => {
+                      try {
+                        if (studentData.verificationCode) {
+                          await api.verifyEmail({ email: studentData.email, code: studentData.verificationCode });
+                        }
+                        toast.success('Email confirmed! Welcome to ILMP.');
+                        navigate('/student');
+                      } catch {
+                        navigate('/student');
+                      }
                     }}
                     rightIcon={<ArrowRight size={15} />}
                   >

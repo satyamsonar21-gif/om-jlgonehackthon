@@ -16,7 +16,6 @@ export default function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [demoCode, setDemoCode] = useState('');
 
   // Password strength calculation
   const calculateStrength = (pwd: string) => {
@@ -39,12 +38,8 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     try {
-      const res = await api.forgotPassword(email);
-      if (res.data?.resetToken) {
-        setDemoCode(res.data.resetToken);
-        setToken(res.data.resetToken);
-      }
-      toast.success('Verification code dispatched to your email!');
+      await api.forgotPassword(email.trim());
+      toast.success('If the account exists, a verification code has been dispatched to your email.');
       setStep('reset');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to dispatch verification code');
@@ -135,16 +130,9 @@ export default function ForgotPasswordPage() {
             <div className="space-y-1.5">
               <h1 className="text-xl font-bold text-slate-900">Enter Verification Code</h1>
               <p className="text-xs text-slate-500 leading-relaxed">
-                We sent a 6-digit code to <span className="font-mono font-semibold text-slate-800">{email}</span>.
+                We sent a 6-digit verification code to <span className="font-mono font-semibold text-slate-800">{email}</span>.
               </p>
             </div>
-
-            {demoCode && (
-              <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
-                <span>Demo Code: <span className="font-mono font-bold text-blue-950">{demoCode}</span></span>
-                <span className="text-[10px] font-mono text-blue-600">Auto-filled</span>
-              </div>
-            )}
 
             <Input
               label="6-Digit Verification Code"

@@ -20,7 +20,7 @@ import { Input, Checkbox } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { RoleKey } from '@/design-system/tokens';
 import { toast } from 'sonner';
-import { useAuth } from '@/lib/auth';
+import { useAuth, getRoleDashboardPath } from '@/lib/auth';
 
 interface RoleOption {
   id: RoleKey;
@@ -82,11 +82,11 @@ const roleOptions: RoleOption[] = [
 ];
 
 export default function SignInPage() {
-  const { switchRole, login } = useAuth();
+  const { login } = useAuth();
   const [activeRole, setActiveRole] = useState<RoleKey>('student');
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('aarav.patil@ghrce.edu');
-  const [password, setPassword] = useState('demo123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,21 +94,21 @@ export default function SignInPage() {
   const currentRole = roleOptions.find((r) => r.id === activeRole) || roleOptions[0];
   const IconComponent = currentRole.icon;
 
-  const handleRoleChange = async (roleId: RoleKey) => {
+  const handleRoleChange = (roleId: RoleKey) => {
     setActiveRole(roleId);
-    await switchRole(roleId);
-    const chosen = roleOptions.find((r) => r.id === roleId);
-    if (chosen) {
-      setEmail(chosen.defaultEmail);
-    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      toast.error('Please enter both your email address and password.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const res = await login({ email, password, role: activeRole });
+      const res = await login({ email: email.trim(), password: password.trim() });
       if (res?.status === 'PENDING_APPROVAL') {
         navigate('/pending-approval');
         return;
@@ -117,14 +117,11 @@ export default function SignInPage() {
         navigate('/account-suspended');
         return;
       }
-      const targetPath = 
-        res?.role === 'STUDENT' ? '/student' :
-        (res?.role === 'FACULTY' || res?.role === 'FACULTY_MENTOR') ? '/faculty' :
-        (res?.role === 'COMPANY' || res?.role === 'COMPANY_MENTOR') ? '/company' :
-        '/admin';
+      const userRole = res?.user?.role || res?.role || 'STUDENT';
+      const targetPath = getRoleDashboardPath(userRole, res?.status);
       navigate(targetPath);
     } catch {
-      // Error already toasted in AuthProvider
+      // Error is toasted in AuthProvider
     } finally {
       setIsLoading(false);
     }
@@ -147,12 +144,12 @@ export default function SignInPage() {
 
       {/* Main Container Card */}
       <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-md p-6 sm:p-8 space-y-6">
-        {/* Explicit Demo Environment Disclaimer Banner */}
-        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900">
-          <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+        {/* Institutional Authentication Banner */}
+        <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-900">
+          <Shield size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <span className="font-bold block">Demonstration Environment</span>
-            <span>You're using a demonstration account. Select any role below to explore live workflows.</span>
+            <span className="font-bold block">Institutional Single Sign-On</span>
+            <span>Sign in with your university or corporate credentials to access your dashboard.</span>
           </div>
         </div>
 

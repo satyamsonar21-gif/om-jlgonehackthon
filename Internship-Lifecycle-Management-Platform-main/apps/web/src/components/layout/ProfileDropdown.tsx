@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, Settings, LogOut, Shield, ChevronDown, Check } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth';
 
 export interface ProfileDropdownProps {
   role: 'STUDENT' | 'FACULTY' | 'COMPANY_MENTOR' | 'ADMIN';
@@ -42,11 +43,17 @@ const roleData = {
 export function ProfileDropdown({ role }: ProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  const data = roleData[role] || roleData.STUDENT;
+  const { user, logout } = useAuth();
+  const fallback = roleData[role] || roleData.STUDENT;
 
-  const handleSignOut = () => {
-    toast.info('Signed out of session');
+  const displayName = user?.name || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : fallback.name);
+  const displayEmail = user?.email || fallback.email;
+  const displayRole = user?.role || fallback.roleLabel;
+  const profileUrl = fallback.profileUrl;
+
+  const handleSignOut = async () => {
     setIsOpen(false);
+    await logout();
     navigate('/sign-in');
   };
 
@@ -60,13 +67,13 @@ export function ProfileDropdown({ role }: ProfileDropdownProps) {
         aria-haspopup="true"
         aria-label="User profile menu"
       >
-        <Avatar name={data.name} size="sm" />
+        <Avatar name={displayName} size="sm" />
         <div className="hidden md:flex flex-col text-left">
           <span className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[110px]">
-            {data.name}
+            {displayName}
           </span>
           <span className="text-[10px] text-slate-500 font-mono leading-tight truncate max-w-[110px]">
-            {data.roleLabel}
+            {displayRole}
           </span>
         </div>
         <ChevronDown size={14} className="text-slate-400" />
@@ -81,12 +88,12 @@ export function ProfileDropdown({ role }: ProfileDropdownProps) {
             {/* User Profile Header */}
             <div className="p-4 border-b border-slate-100 bg-slate-50/70">
               <div className="flex items-center gap-3">
-                <Avatar name={data.name} size="md" />
+                <Avatar name={displayName} size="md" />
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-900 truncate">{data.name}</div>
-                  <div className="text-[11px] text-slate-500 font-mono truncate">{data.email}</div>
+                  <div className="text-xs font-bold text-slate-900 truncate">{displayName}</div>
+                  <div className="text-[11px] text-slate-500 font-mono truncate">{displayEmail}</div>
                   <span className="inline-block mt-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[var(--role-accent-light)] text-[var(--role-text)] border border-[var(--role-border)]">
-                    {data.roleLabel}
+                    {displayRole}
                   </span>
                 </div>
               </div>
@@ -95,7 +102,7 @@ export function ProfileDropdown({ role }: ProfileDropdownProps) {
             {/* Menu Links */}
             <div className="p-1.5 space-y-0.5 text-xs text-slate-700">
               <Link
-                to={data.profileUrl}
+                to={profileUrl}
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
               >
