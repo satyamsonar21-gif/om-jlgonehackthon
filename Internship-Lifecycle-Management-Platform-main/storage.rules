@@ -1,0 +1,86 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules - Internship Lifecycle Management Platform
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions for Authentication & Role Clearance
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'ADMIN' ||
+        request.auth.token.role == 'SUPER_ADMIN' ||
+        request.auth.token.role == 'TNP_ADMIN' ||
+        request.auth.token.role == 'HOD_ADMIN'
+      );
+    }
+
+    function isFaculty() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'FACULTY' ||
+        request.auth.token.role == 'FACULTY_MENTOR'
+      );
+    }
+
+    function isCompany() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'COMPANY' ||
+        request.auth.token.role == 'COMPANY_MENTOR'
+      );
+    }
+
+    function isValidDocument() {
+      return (
+        request.resource.contentType.matches('application/pdf') ||
+        request.resource.contentType.matches('application/msword') ||
+        request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+        request.resource.contentType.matches('image/jpeg') ||
+        request.resource.contentType.matches('image/png') ||
+        request.resource.contentType.matches('image/webp')
+      ) && request.resource.size <= 10 * 1024 * 1024; // 10MB limit
+    }
+
+    // 1. Student Documents: Resumes, Certificates, General Docs
+    // Owner can read/write; Faculty, Company, and Admin can read authorized student submissions
+    match /students/{uid}/{allPaths=**} {
+      allow read: if isOwner(uid) || isFaculty() || isCompany() || isAdmin();
+      allow write: if isOwner(uid) && isValidDocument();
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // 2. Company Documents: Offer Letters, Joining Letters
+    // Company can write; Student, Faculty, and Admin can read assigned offers
+    match /companies/{companyUid}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if (isOwner(companyUid) || isAdmin()) && isValidDocument();
+      allow delete: if isOwner(companyUid) || isAdmin();
+    }
+
+    // 3. Internship Documents: Weekly Reports, Log Submissions, Completion Reports
+    // Interns, Mentors, and Guides can upload & access internship artifacts
+    match /internships/{internshipId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidDocument();
+      allow delete: if isAdmin();
+    }
+
+    // 4. Administrative & Governance Documents: Accredited Certificates, PPO Deeds
+    // Admin only write; Authenticated users can view verified credentials
+    match /admin/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write, delete: if isAdmin() && isValidDocument();
+    }
+
+    // 5. Default Deny - Blocks public unrestricted bucket operations
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

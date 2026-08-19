@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { useAuth } from '@/lib/auth';
+import { uploadDocument, StoragePaths, validateDocumentFile } from '@/lib/storage';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -32,7 +34,6 @@ import {
   Clock,
   Loader2,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -54,7 +55,7 @@ interface Certificate {
 }
 
 export default function ProfilePage() {
-  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav?: () => void }>() || {};
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'projects' | 'certifications' | 'resume' | 'preferences'>('overview');
@@ -87,6 +88,7 @@ export default function ProfilePage() {
   const [portfolioUrl, setPortfolioUrl] = useState('https://aaravpatil.dev');
   const [resumeUrl, setResumeUrl] = useState('https://storage.ilmp.edu/resumes/aarav_patil_cv.pdf');
   const [resumeFileName, setResumeFileName] = useState('aarav_patil_cv.pdf');
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   // Preferences
   const [preferredDomains, setPreferredDomains] = useState('Full Stack Web, Cloud Infrastructure, AI Systems');
@@ -363,19 +365,34 @@ export default function ProfilePage() {
     toast.success('Certification added to profile!');
   };
 
-  // Resume File Upload
-  const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Resume File Upload (Firebase Storage)
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Resume must be under 5MB');
+    const validation = validateDocumentFile(file, { maxSizeBytes: 5 * 1024 * 1024 });
+    if (!validation.valid) {
+      toast.error(validation.error || 'Invalid resume file');
       return;
     }
 
-    setResumeFileName(file.name);
-    setResumeUrl(`https://storage.ilmp.edu/resumes/${encodeURIComponent(file.name)}`);
-    toast.success(`Resume "${file.name}" uploaded successfully!`);
+    try {
+      setResumeFileName(file.name);
+      setUploadProgress(0);
+      const studentUid = user?.uid || 'student';
+      const storagePath = StoragePaths.studentResume(studentUid, file.name);
+
+      const result = await uploadDocument(file, storagePath, (pct) => {
+        setUploadProgress(pct);
+      });
+
+      setResumeUrl(result.downloadUrl);
+      setUploadProgress(null);
+      toast.success(`Resume "${file.name}" uploaded to Firebase Storage successfully!`);
+    } catch (err: any) {
+      setUploadProgress(null);
+      toast.error(err.message || 'Failed to upload resume to Firebase Storage');
+    }
   };
 
   return (
@@ -923,6 +940,16 @@ export default function ProfilePage() {
                 </span>
                 <span className="text-[11px] text-slate-400 mt-0.5">PDF or Word format supported (Max 5MB)</span>
               </label>
+
+              {uploadProgress !== null && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-1.5 animate-in fade-in">
+                  <div className="flex justify-between font-bold text-amber-900 text-[11px]">
+                    <span>Uploading to Firebase Storage...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <Progress value={uploadProgress} variant="warning" size="sm" />
+                </div>
+              )}
 
               {resumeUrl && (
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">

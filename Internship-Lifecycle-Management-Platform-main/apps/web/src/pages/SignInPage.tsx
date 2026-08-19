@@ -20,8 +20,6 @@ import { Input, Checkbox } from '@/components/ui/Input';
 import { RoleKey } from '@/design-system/tokens';
 import { toast } from 'sonner';
 import { useAuth, getRoleDashboardPath } from '@/lib/auth';
-import { auth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 
 interface RoleOption {
   id: RoleKey;
@@ -109,14 +107,7 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
-      // 1. Firebase Authentication sign-in attempt
-      try {
-        await signInWithEmailAndPassword(auth, email.trim(), password.trim());
-      } catch (fbErr: any) {
-        console.warn('Firebase login attempt:', fbErr?.code);
-      }
-
-      // 2. Platform Authentication & Session Establishment
+      // Firebase Authentication + Firestore Role Retrieval
       const res = await login({ email: email.trim(), password: password.trim() });
       if (res?.status === 'PENDING_APPROVAL') {
         navigate('/pending-approval');
@@ -126,11 +117,11 @@ export default function SignInPage() {
         navigate('/account-suspended');
         return;
       }
-      const userRole = res?.user?.role || res?.role || 'STUDENT';
+      const userRole = res?.role || res?.user?.role || 'STUDENT';
       const targetPath = getRoleDashboardPath(userRole, res?.status);
       navigate(targetPath);
     } catch {
-      // Error is toasted in AuthProvider
+      // Handled and toasted cleanly in login()
     } finally {
       setIsLoading(false);
     }

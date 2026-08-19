@@ -24,10 +24,13 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { uploadDocument, StoragePaths, validateDocumentFile } from '@/lib/storage';
 import { toast } from 'sonner';
 
 export default function WeeklyReportsPage() {
   const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+  const { user } = useAuth();
 
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,7 @@ export default function WeeklyReportsPage() {
   const [nextWeekGoals, setNextWeekGoals] = useState('');
   const [hoursWorked, setHoursWorked] = useState('40');
   const [fileUrl, setFileUrl] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [revisionNotes, setRevisionNotes] = useState('');
   const [isRevisionMode, setIsRevisionMode] = useState(false);
   const [acting, setActing] = useState(false);
@@ -412,12 +416,62 @@ export default function WeeklyReportsPage() {
             />
           )}
 
-          <Input
-            label="Attachment / PDF Report URL"
-            value={fileUrl}
-            onChange={(e) => setFileUrl(e.target.value)}
-            placeholder="https://storage.ilmp.edu/..."
-          />
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-800">
+              Attached Report Document (PDF / Word · Max 10MB)
+            </label>
+            <div className="flex gap-2 items-center">
+              <Input
+                value={fileUrl}
+                onChange={(e) => setFileUrl(e.target.value)}
+                placeholder="Upload file or enter document URL"
+                className="flex-1"
+              />
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const validation = validateDocumentFile(file);
+                    if (!validation.valid) {
+                      toast.error(validation.error || 'Invalid file');
+                      return;
+                    }
+                    try {
+                      setUploadProgress(0);
+                      const studentUid = user?.uid || 'student';
+                      const path = StoragePaths.internshipReport(selectedReport?.internshipId || 'active', `week_${weekNumber}`, file.name);
+                      const result = await uploadDocument(file, path, (pct) => setUploadProgress(pct));
+                      setFileUrl(result.downloadUrl);
+                      setUploadProgress(null);
+                      toast.success(`Report file "${file.name}" uploaded to Firebase Storage!`);
+                    } catch (err: any) {
+                      setUploadProgress(null);
+                      toast.error(err.message || 'Failed to upload report file');
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Button type="button" variant="outline" size="sm" leftIcon={<Upload size={13} />}>
+                  Upload File
+                </Button>
+              </label>
+            </div>
+
+            {uploadProgress !== null && (
+              <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-xs space-y-1 animate-in fade-in">
+                <div className="flex justify-between font-bold text-blue-900 text-[11px]">
+                  <span>Uploading document to Firebase Storage...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-blue-200 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-blue-600 h-full transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-slate-100">
             <Button

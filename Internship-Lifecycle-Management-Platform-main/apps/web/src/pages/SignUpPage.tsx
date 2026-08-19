@@ -184,90 +184,32 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
-      // ─── 1. FIREBASE AUTHENTICATION: CREATE USER ─────────────────────────
-      let firebaseUid: string | null = null;
-      try {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          studentData.password
-        );
-        firebaseUid = userCredential.user.uid;
-
-        // Set Firebase display name
-        await updateProfile(userCredential.user, {
-          displayName: fullName,
-        });
-
-        // ─── 2. FIRESTORE: SAVE DOCUMENT UNDER users/{uid} ───────────────────
-        const userDocRef = doc(db, 'users', firebaseUid);
-        await setDoc(
-          userDocRef,
-          {
-            uid: firebaseUid,
-            name: fullName,
-            email: email,
-            phone: phone,
-            role: 'student', // EXACT REQUIRED FIELD: role: "student"
-            department: studentData.department,
-            studentId: studentData.studentId.trim() || undefined,
-            collegeName: studentData.collegeName,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } catch (fbErr: any) {
-        console.warn('Firebase student registration status:', fbErr?.code, fbErr?.message);
-        if (fbErr?.code === 'auth/email-already-in-use') {
-          throw new Error('An account with this email already exists.');
-        } else if (fbErr?.code === 'auth/invalid-email') {
-          throw new Error('Please enter a valid email address.');
-        } else if (fbErr?.code === 'auth/weak-password') {
-          throw new Error('Password must be at least 8 characters long.');
-        } else if (fbErr?.code === 'auth/network-request-failed') {
-          throw new Error('Network connection error. Please check your internet connection.');
-        } else {
-          throw new Error(fbErr?.message || 'Firebase registration failed.');
-        }
-      }
-
-      // ─── 3. PLATFORM DATABASE REGISTRATION ─────────────────────────────────
       const [firstName, ...restParts] = fullName.split(' ');
       const lastName = restParts.join(' ') || firstName || 'Student';
 
-      try {
-        await registerStudent({
-          firstName,
-          lastName,
-          name: fullName,
-          email: email,
-          phone: phone,
-          password: studentData.password,
-          confirmPassword: studentData.confirmPassword,
-          studentId: studentData.studentId.trim() || `STU-${Date.now()}`,
-          enrollmentNumber: studentData.studentId.trim() || `STU-${Date.now()}`,
-          department: studentData.department,
-          year: Number(studentData.year) || 1,
-          semester: Number(studentData.semester) || 1,
-          collegeName: studentData.collegeName,
-          skills: studentData.skills,
-          resumeUrl: studentData.resumeUrl || 'https://storage.ilmp.edu/resumes/default_resume.pdf',
-          cgpa: Number(studentData.cgpa) || 8.0,
-          passingYear: Number(studentData.passingYear) || 2026,
-        });
-      } catch (backendErr) {
-        console.warn('Backend student registration status:', backendErr);
-      }
+      await registerStudent({
+        firstName,
+        lastName,
+        name: fullName,
+        email: email,
+        phone: phone,
+        password: studentData.password,
+        confirmPassword: studentData.confirmPassword,
+        studentId: studentData.studentId.trim() || `STU-${Date.now()}`,
+        enrollmentNumber: studentData.studentId.trim() || `STU-${Date.now()}`,
+        department: studentData.department,
+        year: Number(studentData.year) || 1,
+        semester: Number(studentData.semester) || 1,
+        collegeName: studentData.collegeName,
+        skills: studentData.skills,
+        resumeUrl: studentData.resumeUrl || 'https://storage.ilmp.edu/resumes/default_resume.pdf',
+        cgpa: Number(studentData.cgpa) || 8.0,
+        passingYear: Number(studentData.passingYear) || 2026,
+      });
 
-      toast.success('Registration successful! Please sign in to your student account.');
       navigate('/sign-in/student');
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        'Registration failed. Please try again.';
-      toast.error(errorMessage);
+    } catch {
+      // Error is toasted in AuthProvider registerStudent()
     } finally {
       setLoading(false);
     }
@@ -295,8 +237,8 @@ export default function SignUpPage() {
         firstName,
         lastName,
         name: fullName,
-        email: facultyData.email.trim(),
-        phone: facultyData.phone,
+        email: facultyData.email.trim().toLowerCase(),
+        phone: facultyData.phone.trim(),
         password: facultyData.password,
         confirmPassword: facultyData.confirmPassword,
         facultyId: facultyData.facultyId.trim(),
@@ -306,8 +248,8 @@ export default function SignUpPage() {
         collegeName: facultyData.collegeName,
       });
       navigate('/pending-approval');
-    } catch (err: any) {
-      // Toast already shown in AuthProvider
+    } catch {
+      // Toast already shown in AuthProvider registerFaculty()
     } finally {
       setLoading(false);
     }
@@ -335,12 +277,12 @@ export default function SignUpPage() {
         firstName,
         lastName,
         name: contactName,
-        email: (companyData.contactEmail || companyData.name || '').trim(),
-        company: companyData.name,
+        email: (companyData.contactEmail || companyData.name || '').trim().toLowerCase(),
+        company: companyData.name.trim(),
         domain: companyData.domain,
         website: companyData.website,
         contactPerson: companyData.contactPerson,
-        contactEmail: companyData.contactEmail,
+        contactEmail: (companyData.contactEmail || companyData.name || '').trim().toLowerCase(),
         contactPhone: companyData.contactPhone,
         phone: companyData.contactPhone,
         location: companyData.location,
@@ -350,8 +292,8 @@ export default function SignUpPage() {
         confirmPassword: companyData.confirmPassword,
       });
       navigate('/pending-approval');
-    } catch (err: any) {
-      // Toast already shown in AuthProvider
+    } catch {
+      // Toast already shown in AuthProvider registerCompany()
     } finally {
       setLoading(false);
     }
@@ -397,64 +339,68 @@ export default function SignUpPage() {
       };
 
       // 1. Firebase Authentication
-      let firebaseUid: string | null = null;
-      try {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          payload.email,
-          payload.password
-        );
-        firebaseUid = userCredential.user.uid;
-        await updateProfile(userCredential.user, {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        payload.email,
+        payload.password
+      );
+      const firebaseUid = userCredential.user.uid;
+      await updateProfile(userCredential.user, {
+        displayName: payload.name,
+      }).catch(() => {});
+
+      // 2. Firestore Document: users/{uid}
+      const userDocRef = doc(db, 'users', firebaseUid);
+      await setDoc(
+        userDocRef,
+        {
+          uid: firebaseUid,
+          email: payload.email,
+          name: payload.name,
           displayName: payload.name,
-        });
+          role: 'ADMIN',
+          roleTier: payload.role,
+          department: payload.department,
+          phone: payload.phone || '',
+          status: 'ACTIVE',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
-        // 2. Firestore Document: users/{uid}
-        const userDocRef = doc(db, 'users', firebaseUid);
-        await setDoc(
-          userDocRef,
-          {
-            uid: firebaseUid,
-            email: payload.email,
-            name: payload.name,
-            displayName: payload.name,
-            role: 'ADMIN',
-            roleTier: payload.role,
-            department: payload.department,
-            phone: payload.phone || '',
-            status: 'ACTIVE',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } catch (fbErr: any) {
-        console.warn('Firebase admin creation notice:', fbErr?.code);
-        if (fbErr?.code === 'auth/email-already-in-use') {
-          throw new Error('An account with this email already exists.');
-        } else if (fbErr?.code === 'auth/weak-password') {
-          throw new Error('Password must be at least 8 characters long and contain both letters and numbers.');
-        } else if (fbErr?.code === 'auth/invalid-email') {
-          throw new Error('Please enter a valid email address.');
-        }
-      }
-
-      // 3. Platform Database Registration
-      const res = await api.createAdmin({
+      // 3. Platform Database Registration (optional sync)
+      api.createAdmin({
         ...payload,
-        firebaseUid: firebaseUid || undefined,
-      });
+        firebaseUid,
+      }).catch(() => {});
 
       setCreatedAdminInfo({
-        ...(res.data?.user || res.data),
-        firebaseUid: firebaseUid || `adm_${Date.now()}`,
+        name: payload.name,
+        email: payload.email,
+        firebaseUid,
         role: 'ADMIN',
         roleTier: payload.role,
       });
       setAdminStep(2); // Move to Success Screen
       toast.success(`Administrator account provisioned for ${adminData.name}!`);
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to create administrator account. Please try again.';
+      let msg = err.message || 'Failed to create administrator account. Please try again.';
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/email-already-in-use':
+            msg = 'An account with this email already exists.';
+            break;
+          case 'auth/weak-password':
+            msg = 'Password must be at least 8 characters long and contain both letters and numbers.';
+            break;
+          case 'auth/invalid-email':
+            msg = 'Please enter a valid email address.';
+            break;
+          default:
+            msg = err.message || 'Administrator registration failed.';
+        }
+      }
       toast.error(msg);
     } finally {
       setLoading(false);

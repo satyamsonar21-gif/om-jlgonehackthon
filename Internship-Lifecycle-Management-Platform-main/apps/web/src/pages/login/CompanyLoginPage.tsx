@@ -23,7 +23,15 @@ export default function CompanyLoginPage() {
     setLoading(true);
     try {
       const res = await login({ email: email.trim(), password: password.trim() });
-      const userRole = res?.user?.role || res?.role || 'COMPANY';
+      if (res?.status === 'PENDING_APPROVAL') {
+        navigate('/pending-approval');
+        return;
+      }
+      if (res?.status === 'SUSPENDED') {
+        navigate('/account-suspended');
+        return;
+      }
+      const userRole = res?.role || res?.user?.role || 'COMPANY';
       const targetPath = getRoleDashboardPath(userRole, res?.status);
       navigate(targetPath);
     } catch {

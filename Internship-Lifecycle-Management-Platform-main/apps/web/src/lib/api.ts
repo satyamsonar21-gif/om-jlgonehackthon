@@ -31,10 +31,6 @@ export function setAuthToken(token: string | null) {
 
 export const api = {
   // Auth
-  login: (data: { email: string; password?: string; role?: string } | string) =>
-    typeof data === 'string'
-      ? apiClient.post('/auth/login', { email: data })
-      : apiClient.post('/auth/login', data),
   registerStudent: (data: any) => apiClient.post('/auth/register/student', data),
   registerFaculty: (data: any) => apiClient.post('/auth/register/faculty', data),
   registerCompany: (data: any) => apiClient.post('/auth/register/company', data),
