@@ -15,6 +15,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard, Public } from '../../common/guards/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -22,6 +24,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { RegisterFacultyDto } from './dto/register-faculty.dto';
 import { RegisterCompanyDto } from './dto/register-company.dto';
+import { RegisterAdminDto } from './dto/register-admin.dto';
 import { VerifyEmailDto, ResendVerificationDto } from './dto/verify-email.dto';
 import {
   ForgotPasswordDto,
@@ -131,6 +134,20 @@ export class AuthController {
     };
   }
 
+  @Get('admins')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all institutional administrator accounts' })
+  async getAdmins() {
+    const admins = await this.authService.getAdmins();
+    return {
+      success: true,
+      count: admins.length,
+      data: admins,
+    };
+  }
+
   @Post('register/student')
   @Public()
   @RateLimit(10, 60, 'Too many registration requests. Please wait a moment.')
@@ -159,12 +176,20 @@ export class AuthController {
   }
 
   @Post('register/admin')
-  @Public()
-  @ApiOperation({ summary: 'Explicitly prohibited public admin registration attempt' })
-  async registerAdmin() {
-    throw new ForbiddenException(
-      'Administrator accounts cannot be registered publicly. Please contact institutional administration.',
-    );
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN')
+  @ApiBearerAuth()
+  @RateLimit(10, 60, 'Too many administrator provisioning requests. Please wait a moment.')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Provision new institutional administrator account (Authorized Admins Only)' })
+  async registerAdmin(
+    @Body() body: RegisterAdminDto,
+    @CurrentUser() currentUser: any,
+  ) {
+    if (!currentUser || !['ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN'].includes(currentUser.role?.toUpperCase())) {
+      throw new ForbiddenException('Access denied. Only authorized institutional administrators can provision administrator accounts.');
+    }
+    return this.authService.registerAdmin(body, currentUser);
   }
 
   @Post('forgot-password')

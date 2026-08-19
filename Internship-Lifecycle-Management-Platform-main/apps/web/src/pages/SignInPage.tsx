@@ -17,10 +17,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input, Checkbox } from '@/components/ui/Input';
-import { Modal } from '@/components/ui/Modal';
 import { RoleKey } from '@/design-system/tokens';
 import { toast } from 'sonner';
 import { useAuth, getRoleDashboardPath } from '@/lib/auth';
+import { auth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 interface RoleOption {
   id: RoleKey;
@@ -108,6 +109,14 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
+      // 1. Firebase Authentication sign-in attempt
+      try {
+        await signInWithEmailAndPassword(auth, email.trim(), password.trim());
+      } catch (fbErr: any) {
+        console.warn('Firebase login attempt:', fbErr?.code);
+      }
+
+      // 2. Platform Authentication & Session Establishment
       const res = await login({ email: email.trim(), password: password.trim() });
       if (res?.status === 'PENDING_APPROVAL') {
         navigate('/pending-approval');

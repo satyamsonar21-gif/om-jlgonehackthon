@@ -20,6 +20,7 @@ import {
   GraduationCap, 
   Shield,
   UserCheck,
+  UserPlus,
   PanelLeftClose,
   PanelLeftOpen,
   HelpCircle,
@@ -169,6 +170,7 @@ export function Sidebar({ role }: SidebarProps) {
               items: [
                 { href: '/admin/analytics', label: 'Analytics', icon: BarChart },
                 { href: '/admin/audit-logs', label: 'Audit Ledger', icon: Shield },
+                { href: '/admin/admins', label: 'Admin Management', icon: UserPlus },
                 { href: '/admin/settings', label: 'Settings', icon: Settings },
                 { href: '/admin/profile', label: 'Admin Profile', icon: User },
               ],

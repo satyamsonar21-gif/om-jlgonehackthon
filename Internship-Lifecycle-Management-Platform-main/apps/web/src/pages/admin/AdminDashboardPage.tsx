@@ -21,8 +21,9 @@ import {
   FileSpreadsheet,
   TrendingUp,
   BarChart,
+  UserPlus,
 } from 'lucide-react';
-import { useAdminAnalytics, useAuditLogs } from '@/lib/queries';
+import { useAdminAnalytics, useAuditLogs, useAdmins } from '@/lib/queries';
 import { toast } from 'sonner';
 
 export default function AdminDashboardPage() {
@@ -30,6 +31,7 @@ export default function AdminDashboardPage() {
 
   const { data: serverAnalytics, isLoading: analyticsLoading } = useAdminAnalytics();
   const { data: serverAudit, isLoading: auditLoading } = useAuditLogs({ limit: 6 });
+  const { data: adminsList, isLoading: adminsLoading, error: adminsError, refetch: refetchAdmins } = useAdmins();
 
   const loading = analyticsLoading || auditLoading;
   const analytics = serverAnalytics || {
@@ -266,10 +268,165 @@ export default function AdminDashboardPage() {
                   </div>
                   <ArrowRight size={14} className="text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all" />
                 </Link>
+
+                <Link
+                  to="/admin/admins"
+                  className="p-3.5 rounded-2xl bg-sky-50/50 border border-sky-200/80 hover:bg-sky-50 transition-colors flex items-center justify-between text-xs group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold shadow-xs">
+                      <UserPlus size={16} />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 block group-hover:text-sky-700 transition-colors">
+                        Administrator Directory & Provisioning
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Create new administrator accounts & manage governance tiers
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight size={14} className="text-sky-600 group-hover:translate-x-0.5 transition-all" />
+                </Link>
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* 4. Admin Management Section */}
+        <Card className="border-slate-200 shadow-xs">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+                    <Shield size={16} />
+                  </div>
+                  <CardTitle className="text-lg">Admin Management</CardTitle>
+                  <Badge variant="info" size="sm">
+                    Institutional Governance
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Active institutional administrators, governance roles, and credential management
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <Link to="/admin/admins">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    View Full Directory
+                  </Button>
+                </Link>
+                <Link to="/admin/admins/new">
+                  <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white text-xs gap-1.5 shadow-xs">
+                    <UserPlus size={14} />
+                    Create Admin Account
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {adminsLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-2">
+                <Loader2 className="animate-spin text-sky-600" size={24} />
+                <p className="text-xs text-slate-500 font-medium">Loading administrator directory...</p>
+              </div>
+            ) : adminsError ? (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center justify-between">
+                <span>Failed to load administrator accounts from server.</span>
+                <Button variant="outline" size="sm" onClick={() => refetchAdmins()} className="text-xs h-7">
+                  Retry
+                </Button>
+              </div>
+            ) : !adminsList || adminsList.length === 0 ? (
+              <div className="py-12 text-center flex flex-col items-center justify-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                  <Shield size={24} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-800">No Administrators Found</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">Provision the first institutional administrator account.</p>
+                </div>
+                <Link to="/admin/admins/new">
+                  <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white text-xs gap-1.5">
+                    <UserPlus size={14} />
+                    Create Admin Account
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50/75 border-y border-slate-200/80 text-slate-600 uppercase font-semibold text-[11px] tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">Administrator Name</th>
+                      <th className="py-3 px-4">Email Address</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Created Date</th>
+                      <th className="py-3 px-4 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {adminsList.slice(0, 5).map((admin: any) => {
+                      const getRoleBadgeVariant = (role: string) => {
+                        switch (role) {
+                          case 'SUPER_ADMIN':
+                            return 'danger';
+                          case 'TNP_ADMIN':
+                            return 'warning';
+                          case 'HOD_ADMIN':
+                            return 'success';
+                          default:
+                            return 'info';
+                        }
+                      };
+
+                      return (
+                        <tr key={admin.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
+                                {(admin.name || admin.firstName || 'A').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-slate-900 block">
+                                  {admin.name || `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'Institutional Admin'}
+                                </span>
+                                <span className="text-[11px] text-slate-500">
+                                  ID: {admin.id.substring(0, 8)}...
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
+                            {admin.email}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <Badge variant={getRoleBadgeVariant(admin.role)} size="sm">
+                              {admin.role}
+                            </Badge>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-500 text-[11px]">
+                            {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : '2026-08-19'}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              {admin.status || 'ACTIVE'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

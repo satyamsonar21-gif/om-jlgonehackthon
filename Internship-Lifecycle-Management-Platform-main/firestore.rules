@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── HELPER FUNCTIONS ───────────────────────────────────────────────────
+
+    // Is request authenticated?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Is the user the owner of the target document?
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Get the user's current role from existing Firestore document
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // Check if the authenticated user is an authorized ADMIN
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.role != null && (
+          request.auth.token.role == 'ADMIN' ||
+          request.auth.token.role == 'SUPER_ADMIN' ||
+          request.auth.token.role == 'TNP_ADMIN' ||
+          request.auth.token.role == 'HOD_ADMIN'
+        )) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          getUserRole() == 'ADMIN' ||
+          getUserRole() == 'SUPER_ADMIN' ||
+          getUserRole() == 'TNP_ADMIN' ||
+          getUserRole() == 'HOD_ADMIN'
+        ))
+      );
+    }
+
+    // Valid non-admin institutional roles (case-insensitive)
+    function isNonAdminRole(role) {
+      return role == 'STUDENT' || role == 'student' ||
+             role == 'FACULTY' || role == 'faculty' ||
+             role == 'FACULTY_MENTOR' || role == 'faculty_mentor' ||
+             role == 'COMPANY' || role == 'company' ||
+             role == 'COMPANY_MENTOR' || role == 'company_mentor';
+    }
+
+    // ─── USERS COLLECTION: users/{userId} ───────────────────────────────────
+    match /users/{userId} {
+      // READ: Users can read their own profile, or authorized Admins can read all profiles
+      allow read: if isOwner(userId) || isAdmin();
+
+      // CREATE:
+      // 1. Only an existing authorized ADMIN can create another ADMIN account.
+      // 2. A normal user (Student, Faculty, Company) creating their own profile:
+      //    - Can ONLY create their own document (request.auth.uid == userId)
+      //    - CANNOT set role = "ADMIN", "SUPER_ADMIN", "TNP_ADMIN", or "HOD_ADMIN"
+      //    - Must use an authorized non-admin role.
+      // 3. Unauthenticated requests are strictly DENIED.
+      allow create: if (
+        isAdmin()
+      ) || (
+        isOwner(userId) &&
+        request.resource.data.role != 'ADMIN' &&
+        request.resource.data.role != 'SUPER_ADMIN' &&
+        request.resource.data.role != 'TNP_ADMIN' &&
+        request.resource.data.role != 'HOD_ADMIN' &&
+        isNonAdminRole(request.resource.data.role)
+      );
+
+      // UPDATE:
+      // 1. Authorized Admins can update any profile.
+      // 2. Normal users updating their own profile:
+      //    - CANNOT change their role to ADMIN
+      //    - CANNOT modify their existing role field
+      allow update: if (
+        isAdmin()
+      ) || (
+        isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+        request.resource.data.role != 'ADMIN' &&
+        request.resource.data.role != 'SUPER_ADMIN' &&
+        request.resource.data.role != 'TNP_ADMIN' &&
+        request.resource.data.role != 'HOD_ADMIN'
+      );
+
+      // DELETE: Only authorized ADMIN can delete accounts
+      allow delete: if isAdmin();
+    }
+
+    // ─── STUDENTS COLLECTION: students/{studentId} ──────────────────────────
+    match /students/{studentId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(studentId) || (resource != null && isOwner(resource.data.userId)) || isAdmin();
+    }
+
+    // ─── FACULTY COLLECTION: faculty/{facultyId} ────────────────────────────
+    match /faculty/{facultyId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(facultyId) || (resource != null && isOwner(resource.data.userId)) || isAdmin();
+    }
+
+    // ─── COMPANIES COLLECTION: companies/{companyId} ────────────────────────
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (resource != null && isOwner(resource.data.userId));
+    }
+
+    // ─── INTERNSHIPS & APPLICATIONS ─────────────────────────────────────────
+    match /internships/{internshipId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isAuthenticated();
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ─── AUDIT LOGS (Immutable ledger) ───────────────────────────────────────
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Strictly immutable
+    }
+  }
+}

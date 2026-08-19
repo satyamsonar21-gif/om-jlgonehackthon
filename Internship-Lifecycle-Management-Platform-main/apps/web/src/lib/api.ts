@@ -38,6 +38,9 @@ export const api = {
   registerStudent: (data: any) => apiClient.post('/auth/register/student', data),
   registerFaculty: (data: any) => apiClient.post('/auth/register/faculty', data),
   registerCompany: (data: any) => apiClient.post('/auth/register/company', data),
+  registerAdmin: (data: any) => apiClient.post('/auth/register/admin', data),
+  createAdmin: (data: any) => apiClient.post('/auth/register/admin', data),
+  getAdmins: (params?: any) => apiClient.get('/auth/admins', { params }),
   forgotPassword: (email: string) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (data: { email: string; token: string; newPassword: string }) =>
     apiClient.post('/auth/reset-password', data),

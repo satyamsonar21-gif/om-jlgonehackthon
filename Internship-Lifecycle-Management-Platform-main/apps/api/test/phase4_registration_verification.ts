@@ -273,14 +273,22 @@ async function runPhase4RegistrationTests() {
     });
     assert(matchingCompanies.length === 1, 'Exactly 1 Company record exists in database (zero duplication)');
 
-    // ─── TEST SUITE 4: SECURITY ENFORCEMENT & PUBLIC ADMIN SIGNUP BLOCK ───────
-    console.log('\n🔹 Test Suite 4: Security Policy — No Public Admin Sign-Up');
-    try {
-      await authController.registerAdmin();
-      assert(false, 'Public admin registration should throw 403');
-    } catch (err: any) {
-      assert(err instanceof ForbiddenException, 'POST /auth/register/admin explicitly throws 403 Forbidden');
-    }
+    // ─── TEST SUITE 4: SECURITY ENFORCEMENT & ADMIN PROVISIONING ────────────
+    console.log('\n🔹 Test Suite 4: Administrator Account Provisioning');
+    const adminEmail = `test.admin.${Date.now()}@institution.edu`;
+    const adminRes = await authController.registerAdmin(
+      {
+        name: 'Dr. Test Administrator',
+        email: adminEmail,
+        password: 'SecureAdminPassword123!',
+        role: 'TNP_ADMIN',
+        department: 'Training & Placement Cell',
+      } as any,
+      { id: 'root-super-admin', role: 'SUPER_ADMIN' } as any,
+    );
+    assert(Boolean(adminRes.success), 'Administrator registration returned success');
+    assert(adminRes.role === 'TNP_ADMIN', 'Created administrator has server-assigned TNP_ADMIN role');
+    createdUserIds.push(adminRes.user.id);
 
     // ─── TEST SUITE 5: LOGIN WITH NEWLY REGISTERED USERS ──────────────────────
     console.log('\n🔹 Test Suite 5: Login with newly created accounts');

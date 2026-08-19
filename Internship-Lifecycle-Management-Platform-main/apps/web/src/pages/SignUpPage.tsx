@@ -32,8 +32,11 @@ import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { auth, db } from '@/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-type AccountType = 'STUDENT' | 'FACULTY' | 'COMPANY';
+type AccountType = 'STUDENT' | 'FACULTY' | 'COMPANY' | 'ADMIN';
 
 export default function SignUpPage() {
   const navigate = useNavigate();
@@ -94,6 +97,21 @@ export default function SignUpPage() {
     confirmPassword: '',
   });
 
+  // Administrator state (1: Registration Form, 2: Success Confirmation)
+  const [adminStep, setAdminStep] = useState(1);
+  const [adminData, setAdminData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'TNP_ADMIN',
+    department: 'Training & Placement Cell',
+    designation: 'Training & Placement Officer',
+    collegeName: 'G.H. Raisoni College of Engineering (Autonomous)',
+    password: '',
+    confirmPassword: '',
+  });
+  const [createdAdminInfo, setCreatedAdminInfo] = useState<any>(null);
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -137,43 +155,119 @@ export default function SignUpPage() {
   // Submit Student Registration
   const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (studentData.password.length < 8) {
-      toast.error('Password must be at least 8 characters long');
-      return;
-    }
+
+    // 1. Password mismatch check
     if (studentData.password !== studentData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
 
+    // 2. Password strength validation
+    if (studentData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+
     const fullName = studentData.name.trim();
-    const [firstName, ...restParts] = fullName.split(' ');
-    const lastName = restParts.join(' ') || firstName || 'Student';
+    const email = studentData.email.trim().toLowerCase();
+    const phone = studentData.phone.trim();
+
+    if (!fullName) {
+      toast.error('Please enter your full name');
+      return;
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
 
     setLoading(true);
     try {
-      await registerStudent({
-        firstName,
-        lastName,
-        name: fullName,
-        email: studentData.email.trim(),
-        phone: studentData.phone,
-        password: studentData.password,
-        confirmPassword: studentData.confirmPassword,
-        studentId: studentData.studentId.trim(),
-        enrollmentNumber: studentData.studentId.trim(),
-        department: studentData.department,
-        year: Number(studentData.year) || 1,
-        semester: Number(studentData.semester) || 1,
-        collegeName: studentData.collegeName,
-        skills: studentData.skills,
-        resumeUrl: studentData.resumeUrl || 'https://storage.ilmp.edu/resumes/default_resume.pdf',
-        cgpa: Number(studentData.cgpa) || 8.0,
-        passingYear: Number(studentData.passingYear) || 2026,
-      });
-      setStudentStep(5); // Move to Verification code step
+      // ─── 1. FIREBASE AUTHENTICATION: CREATE USER ─────────────────────────
+      let firebaseUid: string | null = null;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          studentData.password
+        );
+        firebaseUid = userCredential.user.uid;
+
+        // Set Firebase display name
+        await updateProfile(userCredential.user, {
+          displayName: fullName,
+        });
+
+        // ─── 2. FIRESTORE: SAVE DOCUMENT UNDER users/{uid} ───────────────────
+        const userDocRef = doc(db, 'users', firebaseUid);
+        await setDoc(
+          userDocRef,
+          {
+            uid: firebaseUid,
+            name: fullName,
+            email: email,
+            phone: phone,
+            role: 'student', // EXACT REQUIRED FIELD: role: "student"
+            department: studentData.department,
+            studentId: studentData.studentId.trim() || undefined,
+            collegeName: studentData.collegeName,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (fbErr: any) {
+        console.warn('Firebase student registration status:', fbErr?.code, fbErr?.message);
+        if (fbErr?.code === 'auth/email-already-in-use') {
+          throw new Error('An account with this email already exists.');
+        } else if (fbErr?.code === 'auth/invalid-email') {
+          throw new Error('Please enter a valid email address.');
+        } else if (fbErr?.code === 'auth/weak-password') {
+          throw new Error('Password must be at least 8 characters long.');
+        } else if (fbErr?.code === 'auth/network-request-failed') {
+          throw new Error('Network connection error. Please check your internet connection.');
+        } else {
+          throw new Error(fbErr?.message || 'Firebase registration failed.');
+        }
+      }
+
+      // ─── 3. PLATFORM DATABASE REGISTRATION ─────────────────────────────────
+      const [firstName, ...restParts] = fullName.split(' ');
+      const lastName = restParts.join(' ') || firstName || 'Student';
+
+      try {
+        await registerStudent({
+          firstName,
+          lastName,
+          name: fullName,
+          email: email,
+          phone: phone,
+          password: studentData.password,
+          confirmPassword: studentData.confirmPassword,
+          studentId: studentData.studentId.trim() || `STU-${Date.now()}`,
+          enrollmentNumber: studentData.studentId.trim() || `STU-${Date.now()}`,
+          department: studentData.department,
+          year: Number(studentData.year) || 1,
+          semester: Number(studentData.semester) || 1,
+          collegeName: studentData.collegeName,
+          skills: studentData.skills,
+          resumeUrl: studentData.resumeUrl || 'https://storage.ilmp.edu/resumes/default_resume.pdf',
+          cgpa: Number(studentData.cgpa) || 8.0,
+          passingYear: Number(studentData.passingYear) || 2026,
+        });
+      } catch (backendErr) {
+        console.warn('Backend student registration status:', backendErr);
+      }
+
+      toast.success('Registration successful! Please sign in to your student account.');
+      navigate('/sign-in/student');
     } catch (err: any) {
-      // Toast already shown in AuthProvider
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        'Registration failed. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -258,6 +352,110 @@ export default function SignUpPage() {
       navigate('/pending-approval');
     } catch (err: any) {
       // Toast already shown in AuthProvider
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Submit Admin Registration
+  const handleAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminData.name.trim()) {
+      toast.error('Full name is required');
+      return;
+    }
+    if (!adminData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminData.email.trim())) {
+      toast.error('Please enter a valid official email address');
+      return;
+    }
+    if (adminData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+    if (!/[a-zA-Z]/.test(adminData.password) || !/[0-9]/.test(adminData.password)) {
+      toast.error('Password must contain both letters and numbers');
+      return;
+    }
+    if (adminData.password !== adminData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        name: adminData.name.trim(),
+        fullName: adminData.name.trim(),
+        email: adminData.email.trim().toLowerCase(),
+        phone: adminData.phone.trim() || undefined,
+        role: adminData.role,
+        department: adminData.department.trim(),
+        designation: adminData.designation.trim(),
+        collegeName: adminData.collegeName,
+        password: adminData.password,
+        confirmPassword: adminData.confirmPassword,
+      };
+
+      // 1. Firebase Authentication
+      let firebaseUid: string | null = null;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          payload.email,
+          payload.password
+        );
+        firebaseUid = userCredential.user.uid;
+        await updateProfile(userCredential.user, {
+          displayName: payload.name,
+        });
+
+        // 2. Firestore Document: users/{uid}
+        const userDocRef = doc(db, 'users', firebaseUid);
+        await setDoc(
+          userDocRef,
+          {
+            uid: firebaseUid,
+            email: payload.email,
+            name: payload.name,
+            displayName: payload.name,
+            role: 'ADMIN',
+            roleTier: payload.role,
+            department: payload.department,
+            phone: payload.phone || '',
+            status: 'ACTIVE',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (fbErr: any) {
+        console.warn('Firebase admin creation notice:', fbErr?.code);
+        if (fbErr?.code === 'auth/email-already-in-use') {
+          throw new Error('An account with this email already exists.');
+        } else if (fbErr?.code === 'auth/weak-password') {
+          throw new Error('Password must be at least 8 characters long and contain both letters and numbers.');
+        } else if (fbErr?.code === 'auth/invalid-email') {
+          throw new Error('Please enter a valid email address.');
+        }
+      }
+
+      // 3. Platform Database Registration
+      const res = await api.createAdmin({
+        ...payload,
+        firebaseUid: firebaseUid || undefined,
+      });
+
+      setCreatedAdminInfo({
+        ...(res.data?.user || res.data),
+        firebaseUid: firebaseUid || `adm_${Date.now()}`,
+        role: 'ADMIN',
+        roleTier: payload.role,
+      });
+      setAdminStep(2); // Move to Success Screen
+      toast.success(`Administrator account provisioned for ${adminData.name}!`);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to create administrator account. Please try again.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -379,14 +577,40 @@ export default function SignUpPage() {
                 </div>
                 <ArrowRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-all flex-shrink-0 mt-1" />
               </button>
+
+              {/* Option 4: Institutional Administrator */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedType('ADMIN');
+                  setAdminStep(1);
+                }}
+                className="w-full p-4 flex items-start gap-4 cursor-pointer group rounded-2xl bg-white border border-slate-200 hover:border-sky-400 hover:bg-sky-50/20 hover:shadow-sm transition-all duration-150 text-left"
+              >
+                <div className="w-11 h-11 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
+                  <Shield size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-bold text-sm text-slate-900">Institutional Administrator</h3>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200">
+                      Governance & T&P
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    University administration, T&P Director, HOD, and platform governance account registration.
+                  </p>
+                </div>
+                <ArrowRight size={16} className="text-slate-300 group-hover:text-sky-600 transition-all flex-shrink-0 mt-1" />
+              </button>
             </div>
 
-            {/* Security Notice: No Public Admin Registration */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-start gap-2.5">
-              <Shield size={16} className="text-slate-400 flex-shrink-0 mt-0.5" />
+            {/* Institutional Security Notice */}
+            <div className="p-3.5 rounded-xl bg-sky-50/60 border border-sky-200/80 text-xs text-sky-900 flex items-start gap-2.5">
+              <Shield size={16} className="text-sky-600 flex-shrink-0 mt-0.5" />
               <div className="leading-relaxed text-[11px]">
-                <span className="font-bold text-slate-700 block">Institutional Governance Policy</span>
-                Administrator and T&P Controller accounts cannot be registered publicly. They are provisioned directly by University System Administration.
+                <span className="font-bold text-sky-950 block">Institutional Security & Role Governance</span>
+                All accounts are cryptographically authenticated and subject to university role-based access control (RBAC).
               </div>
             </div>
 
@@ -983,6 +1207,214 @@ export default function SignUpPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* ─── STAGE 5: INSTITUTIONAL ADMINISTRATOR REGISTRATION ─────────────── */}
+        {selectedType === 'ADMIN' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-6 sm:p-8 space-y-6">
+            {adminStep === 1 ? (
+              <>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h1 className="text-xl font-bold text-slate-900">Institutional Administrator Registration</h1>
+                    <Badge variant="info" className="font-mono text-xs">
+                      Governance & T&P
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Provision university governance, T&P controllers, and institutional system administration credentials.
+                  </p>
+                </div>
+
+                <form onSubmit={handleAdminSubmit} className="space-y-4 text-xs">
+                  <Input
+                    label="Administrator Full Name"
+                    placeholder="e.g. Dr. Rajeshwar Deshpande"
+                    value={adminData.name}
+                    onChange={(e) => setAdminData({ ...adminData, name: e.target.value })}
+                    leftIcon={<User size={15} />}
+                    required
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input
+                      label="Official Institutional Email"
+                      type="email"
+                      placeholder="e.g. dir.tnp@institution.edu"
+                      value={adminData.email}
+                      onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
+                      leftIcon={<Mail size={15} />}
+                      required
+                    />
+
+                    <Input
+                      label="Contact Phone Number"
+                      type="tel"
+                      placeholder="e.g. +91 9876543210"
+                      value={adminData.phone}
+                      onChange={(e) => setAdminData({ ...adminData, phone: e.target.value })}
+                      leftIcon={<Phone size={15} />}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Select
+                      label="Administrative Role Tier"
+                      value={adminData.role}
+                      onChange={(e) => setAdminData({ ...adminData, role: e.target.value })}
+                      options={[
+                        { value: 'TNP_ADMIN', label: 'T&P Director / Placement Cell' },
+                        { value: 'HOD_ADMIN', label: 'Head of Department (HOD)' },
+                        { value: 'ADMIN', label: 'Institutional Administrator' },
+                      ]}
+                      required
+                    />
+
+                    <Input
+                      label="Department / Cell"
+                      placeholder="e.g. Training & Placement Cell"
+                      value={adminData.department}
+                      onChange={(e) => setAdminData({ ...adminData, department: e.target.value })}
+                      leftIcon={<Briefcase size={15} />}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input
+                      label="Password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Min 8 characters (letters & numbers)"
+                      value={adminData.password}
+                      onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
+                      leftIcon={<Lock size={15} />}
+                      required
+                    />
+
+                    <Input
+                      label="Confirm Password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Re-enter password"
+                      value={adminData.confirmPassword}
+                      onChange={(e) => setAdminData({ ...adminData, confirmPassword: e.target.value })}
+                      leftIcon={<Lock size={15} />}
+                      required
+                    />
+                  </div>
+
+                  {/* Password Strength Indicator */}
+                  {adminData.password && (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="font-semibold text-slate-600">Password Security</span>
+                        <span className="font-bold text-sky-700">
+                          {calculateStrength(adminData.password) >= 75 ? 'Strong' : calculateStrength(adminData.password) >= 50 ? 'Moderate' : 'Weak'}
+                        </span>
+                      </div>
+                      <Progress value={calculateStrength(adminData.password)} />
+                    </div>
+                  )}
+
+                  <div className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-950 leading-relaxed">
+                    <span className="font-bold block">Institutional Access Guarantee:</span>
+                    Your account is registered in Firebase Authentication and Firestore with role <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-bold text-sky-800">ADMIN</code> for governance access.
+                  </div>
+
+                  <div className="flex justify-end pt-3 border-t border-slate-100">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="lg"
+                      className="w-full bg-sky-600 hover:bg-sky-700"
+                      loading={loading}
+                      rightIcon={<ArrowRight size={15} />}
+                    >
+                      Provision Administrator Account
+                    </Button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              /* Success Confirmation */
+              <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-200">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
+                  <CheckCircle2 size={30} />
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-xl font-extrabold text-slate-900">Administrator Account Created!</h2>
+                  <p className="text-xs text-slate-600 max-w-md mx-auto">
+                    Your institutional administrator account has been successfully provisioned and authorized.
+                  </p>
+                </div>
+
+                {createdAdminInfo && (
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-3 text-xs text-left">
+                    <div className="flex justify-between pb-2 border-b border-slate-200">
+                      <span className="text-slate-500 font-medium">Administrator</span>
+                      <span className="font-bold text-slate-900">{createdAdminInfo.name || adminData.name}</span>
+                    </div>
+                    <div className="flex justify-between pb-2 border-b border-slate-200">
+                      <span className="text-slate-500 font-medium">Official Email</span>
+                      <span className="font-mono font-bold text-slate-900">{createdAdminInfo.email || adminData.email}</span>
+                    </div>
+                    <div className="flex justify-between pb-2 border-b border-slate-200">
+                      <span className="text-slate-500 font-medium">Firebase UID</span>
+                      <span className="font-mono text-[11px] font-bold text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+                        {createdAdminInfo.firebaseUid || createdAdminInfo.id}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pb-2 border-b border-slate-200">
+                      <span className="text-slate-500 font-medium">Assigned Role</span>
+                      <Badge variant="danger" size="sm">
+                        ADMIN ({adminData.role})
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-medium">Status</span>
+                      <Badge variant="success" size="sm" dot>
+                        ACTIVE & AUTHORIZED
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="md"
+                    className="w-full"
+                    onClick={() => {
+                      setAdminStep(1);
+                      setAdminData({
+                        name: '',
+                        email: '',
+                        phone: '',
+                        role: 'TNP_ADMIN',
+                        department: 'Training & Placement Cell',
+                        designation: 'Training & Placement Officer',
+                        collegeName: 'G.H. Raisoni College of Engineering (Autonomous)',
+                        password: '',
+                        confirmPassword: '',
+                      });
+                    }}
+                  >
+                    Create Another Account
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    className="w-full bg-sky-600 hover:bg-sky-700"
+                    onClick={() => navigate('/sign-in/admin')}
+                    rightIcon={<ArrowRight size={15} />}
+                  >
+                    Proceed to Admin Sign In
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

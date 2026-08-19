@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { useAuth, getRoleDashboardPath } from '@/lib/auth';
+import { auth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function StudentLoginPage() {
   const navigate = useNavigate();
@@ -22,6 +24,14 @@ export default function StudentLoginPage() {
 
     setLoading(true);
     try {
+      // 1. Firebase Authentication sign-in
+      try {
+        await signInWithEmailAndPassword(auth, email.trim(), password.trim());
+      } catch (fbErr: any) {
+        console.warn('Firebase student login check:', fbErr?.code);
+      }
+
+      // 2. Institutional Session & Dashboard Navigation
       const res = await login({ email: email.trim(), password: password.trim() });
       const userRole = res?.user?.role || res?.role || 'STUDENT';
       const targetPath = getRoleDashboardPath(userRole, res?.status);

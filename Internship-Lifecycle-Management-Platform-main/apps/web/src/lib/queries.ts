@@ -8,6 +8,7 @@ export const queryKeys = {
   companyAnalytics: (id?: string) => ['analytics', 'company', id] as const,
   studentAnalytics: (id?: string) => ['analytics', 'student', id] as const,
   auditLogs: (params?: any) => ['audit', params] as const,
+  admins: ['admins'] as const,
   notifications: ['notifications'] as const,
   unreadCount: ['notifications', 'unread-count'] as const,
   notificationPreferences: ['notifications', 'preferences'] as const,
@@ -38,6 +39,18 @@ export function useAuditLogs(params: any = {}) {
     queryFn: async () => {
       const res = await api.getAuditLogs(params);
       return res.data;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+// --- Hook 2B: Institutional Administrators List ---
+export function useAdmins() {
+  return useQuery({
+    queryKey: queryKeys.admins,
+    queryFn: async () => {
+      const res = await api.getAdmins();
+      return res.data?.data || res.data || [];
     },
     staleTime: 30 * 1000,
   });

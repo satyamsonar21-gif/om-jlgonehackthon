@@ -74,6 +74,8 @@ const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage')
 const AdminAuditLogPage = lazy(() => import('./pages/admin/AdminAuditLogPage'));
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'));
 const AdminProfilePage = lazy(() => import('./pages/admin/AdminProfilePage'));
+const AdminManagementPage = lazy(() => import('./pages/admin/AdminManagementPage'));
+const CreateAdminPage = lazy(() => import('./pages/admin/CreateAdminPage'));
 
 // High-Performance QueryClient configuration
 const queryClient = new QueryClient({
@@ -172,6 +174,8 @@ export default function App() {
                   <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
                   <Route path="/admin/audit-logs" element={<AdminAuditLogPage />} />
                   <Route path="/admin/audit" element={<AdminAuditLogPage />} />
+                  <Route path="/admin/admins" element={<AdminManagementPage />} />
+                  <Route path="/admin/admins/new" element={<CreateAdminPage />} />
                   <Route path="/admin/settings" element={<AdminSettingsPage />} />
                   <Route path="/admin/profile" element={<AdminProfilePage />} />
                 </Route>

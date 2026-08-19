@@ -683,6 +683,180 @@ export class AuthService {
     };
   }
 
+  // ─── REGISTRATION: ADMIN ────────────────────────────────────────────────────
+
+  async registerAdmin(
+    dto: {
+      firstName?: string;
+      lastName?: string;
+      name?: string;
+      fullName?: string;
+      email: string;
+      phone?: string;
+      password: string;
+      confirmPassword?: string;
+      role?: string;
+      department?: string;
+      designation?: string;
+      collegeName?: string;
+      collegeId?: string;
+    },
+    creatorUser?: any,
+  ) {
+    // 0. Strict Server-Side Authorization Check
+    if (creatorUser) {
+      const creatorRole = (creatorUser.role || '').toUpperCase();
+      if (!['ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN'].includes(creatorRole)) {
+        throw new ForbiddenException(
+          `Access denied. Role '${creatorUser.role}' is not authorized to provision administrator accounts.`,
+        );
+      }
+    } else {
+      // If admins already exist in database, require logged-in admin identity
+      const existingAdminCount = await this.prisma.user.count({
+        where: {
+          role: { in: ['ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN'] },
+        },
+      });
+      if (existingAdminCount > 0) {
+        throw new UnauthorizedException(
+          'Authentication required. Only logged-in institutional administrators can provision admin accounts.',
+        );
+      }
+    }
+
+    // 1. Password Confirmation Check
+    if (dto.confirmPassword !== undefined && dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match.');
+    }
+
+    // 2. Validate Password Strength
+    this.validatePasswordStrength(dto.password);
+
+    const email = (dto.email || '').toLowerCase().trim();
+    if (!email) {
+      throw new BadRequestException('Institutional email address is required.');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('Please enter a valid email address.');
+    }
+
+    const firstName = (dto.firstName || '').trim();
+    const lastName = (dto.lastName || '').trim();
+    const fullName = (dto.fullName || dto.name || (firstName && lastName ? `${firstName} ${lastName}` : firstName)).trim();
+
+    if (!fullName) {
+      throw new BadRequestException('Full name is required.');
+    }
+
+    // 3. Server-enforced Administrative Role Validation
+    let assignedRole = 'ADMIN';
+    const candidateRole = (dto.role || '').toUpperCase().trim();
+    if (candidateRole && ['ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN'].includes(candidateRole)) {
+      assignedRole = candidateRole;
+    }
+
+    // 4. Atomic Database Transaction
+    const user = await this.prisma.$transaction(async (tx) => {
+      // Check duplicate email
+      const existingUser = await tx.user.findUnique({ where: { email } });
+      if (existingUser) {
+        throw new ConflictException('An account with this email address already exists. Please sign in or use another email.');
+      }
+
+      // Resolve College
+      let college = await tx.college.findFirst({
+        where: dto.collegeId
+          ? { id: dto.collegeId }
+          : dto.collegeName
+            ? { name: { contains: dto.collegeName } }
+            : undefined,
+      });
+      if (!college) {
+        college = await tx.college.create({
+          data: {
+            name: dto.collegeName || 'G.H. Raisoni College of Engineering (Autonomous)',
+            code: 'GHRCE-' + crypto.randomBytes(2).toString('hex').toUpperCase(),
+            address: 'CRPF Gate No. 3, Hingna Road, Digdoh Hills, Nagpur, Maharashtra',
+          },
+        });
+      }
+
+      const passwordHash = this.hashPassword(dto.password);
+
+      // Create Admin User
+      const newAdmin = await tx.user.create({
+        data: {
+          email,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          name: fullName,
+          phone: dto.phone || null,
+          passwordHash,
+          role: assignedRole, // SERVER-VALIDATED ROLE
+          status: 'ACTIVE',
+          isActive: true,
+          isEmailVerified: true,
+          emailVerified: new Date(),
+          collegeId: college.id,
+        },
+      });
+
+      // Audit Log Entry with foreign-key safety
+      let auditUserId = newAdmin.id;
+      if (creatorUser?.id && creatorUser.id !== newAdmin.id) {
+        const creatorExists = await tx.user.findUnique({ where: { id: creatorUser.id } });
+        if (creatorExists) {
+          auditUserId = creatorExists.id;
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          action: 'ADMIN_ACCOUNT_CREATED',
+          entity: 'User',
+          entityId: newAdmin.id,
+          userId: auditUserId,
+          userRole: creatorUser?.role || assignedRole,
+          newState: 'ACTIVE',
+          reason: `Administrator account provisioned with role ${assignedRole}`,
+          metadata: JSON.stringify({
+            department: dto.department || 'Central Administration',
+            designation: dto.designation || 'Administrator',
+            role: assignedRole,
+            creator: creatorUser?.email || 'SYSTEM_AUTH',
+          }),
+        },
+      });
+
+      return newAdmin;
+    });
+
+    const jwtToken = this.createJwtToken(user);
+
+    return {
+      success: true,
+      token: jwtToken,
+      user: this.sanitizeUser(user),
+      role: user.role,
+      status: user.status,
+      message: `Administrator account for ${user.name} provisioned successfully with role ${user.role}!`,
+    };
+  }
+
+  async getAdmins() {
+    const admins = await this.prisma.user.findMany({
+      where: {
+        role: {
+          in: ['ADMIN', 'SUPER_ADMIN', 'TNP_ADMIN', 'HOD_ADMIN'],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return admins.map((a) => this.sanitizeUser(a));
+  }
+
   // ─── LOGIN & SESSION ────────────────────────────────────────────────────────
 
   async login(
