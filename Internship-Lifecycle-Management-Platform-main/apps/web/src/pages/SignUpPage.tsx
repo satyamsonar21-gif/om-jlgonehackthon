@@ -54,13 +54,17 @@ export default function SignUpPage() {
     email: '',
     phone: '',
     collegeName: 'G.H. Raisoni College of Engineering (Autonomous)',
+    rollNumber: '',
     studentId: '',
+    branch: 'Computer Science & Engineering',
     department: 'Computer Science & Engineering',
     year: 3,
     semester: 6,
     cgpa: 8.5,
+    backlogs: 0,
     passingYear: 2026,
     skills: 'React, TypeScript, Node.js, Python, PostgreSQL',
+    resume: '',
     resumeUrl: '',
     resumeFileName: '',
     password: '',
@@ -186,6 +190,8 @@ export default function SignUpPage() {
     try {
       const [firstName, ...restParts] = fullName.split(' ');
       const lastName = restParts.join(' ') || firstName || 'Student';
+      const rollNumber = studentData.rollNumber.trim() || studentData.studentId.trim();
+      const branch = studentData.branch.trim() || studentData.department.trim();
 
       await registerStudent({
         firstName,
@@ -195,19 +201,23 @@ export default function SignUpPage() {
         phone: phone,
         password: studentData.password,
         confirmPassword: studentData.confirmPassword,
-        studentId: studentData.studentId.trim() || `STU-${Date.now()}`,
-        enrollmentNumber: studentData.studentId.trim() || `STU-${Date.now()}`,
-        department: studentData.department,
-        year: Number(studentData.year) || 1,
-        semester: Number(studentData.semester) || 1,
+        rollNumber: rollNumber,
+        studentId: rollNumber,
+        enrollmentNumber: rollNumber,
+        branch: branch,
+        department: branch,
+        year: Number(studentData.year) || 3,
+        semester: Number(studentData.semester) || 6,
         collegeName: studentData.collegeName,
         skills: studentData.skills,
-        resumeUrl: studentData.resumeUrl || 'https://storage.ilmp.edu/resumes/default_resume.pdf',
+        resume: studentData.resumeUrl || studentData.resume || '',
+        resumeUrl: studentData.resumeUrl || studentData.resume || '',
         cgpa: Number(studentData.cgpa) || 8.0,
+        backlogs: Number(studentData.backlogs) || 0,
         passingYear: Number(studentData.passingYear) || 2026,
       });
 
-      navigate('/sign-in/student');
+      navigate('/student');
     } catch {
       // Error is toasted in AuthProvider registerStudent()
     } finally {
@@ -658,15 +668,15 @@ export default function SignUpPage() {
                 <Input
                   label="Enrollment / PRN / Roll Number"
                   placeholder="e.g. 2023BCSE042"
-                  value={studentData.studentId}
-                  onChange={(e) => setStudentData({ ...studentData, studentId: e.target.value })}
+                  value={studentData.rollNumber || studentData.studentId}
+                  onChange={(e) => setStudentData({ ...studentData, rollNumber: e.target.value, studentId: e.target.value })}
                   required
                 />
 
                 <Select
                   label="Department / Branch"
-                  value={studentData.department}
-                  onChange={(e) => setStudentData({ ...studentData, department: e.target.value })}
+                  value={studentData.branch || studentData.department}
+                  onChange={(e) => setStudentData({ ...studentData, branch: e.target.value, department: e.target.value })}
                   options={[
                     { label: 'Computer Science & Engineering', value: 'Computer Science & Engineering' },
                     { label: 'Information Technology', value: 'Information Technology' },
@@ -706,7 +716,7 @@ export default function SignUpPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <Input
                     label="Cumulative CGPA"
                     type="number"
@@ -720,7 +730,18 @@ export default function SignUpPage() {
                   />
 
                   <Input
-                    label="Expected Passing Year"
+                    label="Active Backlogs"
+                    type="number"
+                    min="0"
+                    max="20"
+                    placeholder="0"
+                    value={String(studentData.backlogs)}
+                    onChange={(e) => setStudentData({ ...studentData, backlogs: Number(e.target.value) })}
+                    required
+                  />
+
+                  <Input
+                    label="Passing Year"
                     type="number"
                     value={String(studentData.passingYear)}
                     onChange={(e) => setStudentData({ ...studentData, passingYear: Number(e.target.value) })}
@@ -736,7 +757,7 @@ export default function SignUpPage() {
                     variant="primary"
                     size="md"
                     onClick={() => {
-                      if (!studentData.studentId) {
+                      if (!studentData.rollNumber && !studentData.studentId) {
                         toast.error('Please enter your enrollment / roll number');
                         return;
                       }

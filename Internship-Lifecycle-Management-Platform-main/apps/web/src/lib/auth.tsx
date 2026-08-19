@@ -85,11 +85,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userData = userDocSnap.data();
             const rawRole = userData.role;
             if (rawRole && VALID_ROLES.includes(rawRole.toUpperCase())) {
+              let studentData = undefined;
+              if (rawRole.toUpperCase() === 'STUDENT') {
+                try {
+                  const studentSnap = await getDoc(doc(db, 'students', firebaseUser.uid));
+                  if (studentSnap.exists()) {
+                    studentData = studentSnap.data();
+                  }
+                } catch (sErr) {
+                  console.warn('Student profile fetch notice:', sErr);
+                }
+              }
+
               const appUser = {
                 uid: firebaseUser.uid,
                 id: firebaseUser.uid,
                 email: firebaseUser.email,
                 ...userData,
+                student: studentData,
               };
               setUser(appUser);
               setActiveRole(normalizeRoleToKey(rawRole));
@@ -142,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // User profile not found
         await signOut(auth);
         setUser(null);
-        const errorMsg = 'User profile not found. Please contact your platform administrator.';
+        const errorMsg = 'User profile not found in Firestore. Please register or contact support.';
         toast.error(errorMsg);
         throw new Error(errorMsg);
       }
@@ -159,18 +172,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errorMsg);
       }
 
+      let studentData = undefined;
+      if (rawRole.toUpperCase() === 'STUDENT') {
+        try {
+          const studentSnap = await getDoc(doc(db, 'students', uid));
+          if (studentSnap.exists()) {
+            studentData = studentSnap.data();
+          }
+        } catch (sErr) {
+          console.warn('Student profile fetch notice on login:', sErr);
+        }
+      }
+
       const appUser = {
         uid: firebaseUser.uid,
         id: firebaseUser.uid,
         email: firebaseUser.email,
         ...userData,
+        student: studentData,
       };
 
       setUser(appUser);
       const normalized = normalizeRoleToKey(rawRole);
       setActiveRole(normalized);
 
-      const displayName = userData.name || userData.firstName || firebaseUser.displayName || 'User';
+      const displayName = userData.name || userData.firstName || firebaseUser.displayName || 'Student';
       toast.success(`Welcome back, ${displayName}!`);
 
       return {
@@ -197,6 +223,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           case 'auth/too-many-requests':
             msg = 'Too many failed login attempts. Please try again later.';
             break;
+          case 'auth/network-request-failed':
+            msg = 'Network connection error. Please check your internet connection.';
+            break;
           default:
             msg = err.message || 'Failed to authenticate with Firebase.';
         }
@@ -215,9 +244,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const email = (data.email || '').trim().toLowerCase();
       const password = data.password;
       const fullName = (data.name || `${data.firstName || ''} ${data.lastName || ''}`).trim();
+      const rollNumber = (data.rollNumber || data.studentId || data.enrollmentNumber || '').trim();
+      const branch = (data.branch || data.department || '').trim();
 
       if (!email || !password) {
         const msg = 'Email and password are required for student registration.';
+        toast.error(msg);
+        throw new Error(msg);
+      }
+
+      if (!fullName) {
+        const msg = 'Full name is required.';
+        toast.error(msg);
+        throw new Error(msg);
+      }
+
+      if (!rollNumber) {
+        const msg = 'Roll Number / PRN is required.';
+        toast.error(msg);
+        throw new Error(msg);
+      }
+
+      if (password.length < 8) {
+        const msg = 'Password must be at least 8 characters long.';
         toast.error(msg);
         throw new Error(msg);
       }
@@ -231,71 +280,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateProfile(firebaseUser, { displayName: fullName }).catch(() => {});
       }
 
-      // 2. Create users/{uid} document in Firestore
+      // 2. Format skills as array of strings
+      const skillsArray = Array.isArray(data.skills)
+        ? data.skills
+        : (typeof data.skills === 'string' && data.skills.trim()
+            ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+            : ['React', 'TypeScript', 'Node.js']);
+
+      // 3. Create users/{uid} document in Firestore
       const userDocRef = doc(db, 'users', uid);
       const userDocData = {
         uid,
         name: fullName,
         displayName: fullName,
-        email,
+        email: firebaseUser.email || email,
         phone: data.phone || '',
         role: 'STUDENT',
         status: 'ACTIVE',
-        department: data.department || '',
+        department: branch,
         collegeName: data.collegeName || '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
       await setDoc(userDocRef, userDocData);
 
-      // 3. Create role-specific students/{uid} document in Firestore
+      // 4. Create role-specific students/{uid} document in Firestore matching exact schema
       const studentDocRef = doc(db, 'students', uid);
-      await setDoc(studentDocRef, {
+      const studentDocData = {
+        name: fullName,
+        email: firebaseUser.email || email,
+        rollNumber: rollNumber,
+        branch: branch,
+        cgpa: Number(data.cgpa) || 0,
+        backlogs: Number(data.backlogs) || 0,
+        passingYear: Number(data.passingYear) || 2026,
+        skills: skillsArray,
+        resume: data.resume || data.resumeUrl || '',
+        // Compatibility and dossier fields
         uid,
         userId: uid,
-        name: fullName,
-        email,
         phone: data.phone || '',
-        studentId: data.studentId || '',
-        enrollmentNumber: data.enrollmentNumber || data.studentId || '',
+        studentId: rollNumber,
+        enrollmentNumber: rollNumber,
         collegeName: data.collegeName || '',
-        department: data.department || '',
-        year: Number(data.year) || 1,
-        semester: Number(data.semester) || 1,
-        cgpa: Number(data.cgpa) || 8.0,
-        passingYear: Number(data.passingYear) || 2026,
-        skills: data.skills || '',
-        resumeUrl: data.resumeUrl || '',
+        department: branch,
+        year: Number(data.year) || 3,
+        semester: Number(data.semester) || 6,
+        resumeUrl: data.resumeUrl || data.resume || '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      await setDoc(studentDocRef, studentDocData);
 
-      // Synchronize with API backend asynchronously
-      api.registerStudent({ ...data, firebaseUid: uid }).catch(() => {});
+      // Synchronize with API backend asynchronously if available
+      api.registerStudent({ ...data, rollNumber, branch, firebaseUid: uid }).catch(() => {});
 
       const appUser = {
         uid,
         id: uid,
         email,
         ...userDocData,
+        student: studentDocData,
       };
       setUser(appUser);
       setActiveRole('student');
 
-      toast.success('Student account created successfully!');
+      toast.success('Student account registered and authenticated successfully!');
       return { uid, user: appUser };
     } catch (err: any) {
       let msg = err.message || 'Student registration failed';
       if (err.code) {
         switch (err.code) {
           case 'auth/email-already-in-use':
-            msg = 'An account with this email already exists.';
+            msg = 'This email is already registered. Please sign in instead.';
             break;
           case 'auth/weak-password':
             msg = 'Password must be at least 8 characters long.';
             break;
           case 'auth/invalid-email':
             msg = 'Please enter a valid email address.';
+            break;
+          case 'auth/network-request-failed':
+            msg = 'Network error. Please check your internet connection.';
             break;
           default:
             msg = err.message || 'Student registration failed.';

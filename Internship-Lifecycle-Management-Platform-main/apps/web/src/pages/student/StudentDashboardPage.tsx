@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { PriorityBanner } from '@/components/common/PriorityBanner';
@@ -21,21 +21,48 @@ import {
   Send,
   Plus,
   CheckCircle2,
-  Mail
+  Mail,
+  GraduationCap,
+  ExternalLink,
+  Code2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { db } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function StudentDashboardPage() {
-  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+  const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav?: () => void }>() || {};
   const { user } = useAuth();
+
+  const [studentProfile, setStudentProfile] = useState<any>(user?.student || null);
+  const [loadingProfile, setLoadingProfile] = useState(!user?.student);
 
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactTarget, setContactTarget] = useState<{ name: string; role: string; email: string } | null>(null);
   const [logSummary, setLogSummary] = useState('');
   const [logHours, setLogHours] = useState('8');
+
+  // Load real student profile from Firestore: students/{user.uid}
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user?.uid) {
+        try {
+          const studentDocSnap = await getDoc(doc(db, 'students', user.uid));
+          if (studentDocSnap.exists()) {
+            setStudentProfile(studentDocSnap.data());
+          }
+        } catch (err) {
+          console.warn('Student profile fetch from Firestore notice:', err);
+        } finally {
+          setLoadingProfile(false);
+        }
+      }
+    };
+    loadProfile();
+  }, [user?.uid]);
 
   const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,15 +96,103 @@ export default function StudentDashboardPage() {
     { id: 't4', title: 'Author Week 5 Synthesis Report and link merged pull requests', done: false, due: 'Due Tomorrow' },
   ];
 
+  const studentName = studentProfile?.name || user?.name || user?.displayName || 'Student';
+  const rollNumber = studentProfile?.rollNumber || studentProfile?.studentId || '';
+  const branch = studentProfile?.branch || studentProfile?.department || 'Engineering';
+  const cgpa = studentProfile?.cgpa;
+  const backlogs = studentProfile?.backlogs !== undefined ? studentProfile.backlogs : 0;
+  const passingYear = studentProfile?.passingYear || 2026;
+  const skillsList: string[] = Array.isArray(studentProfile?.skills)
+    ? studentProfile.skills
+    : (typeof studentProfile?.skills === 'string' && studentProfile.skills
+        ? studentProfile.skills.split(',').map((s: string) => s.trim())
+        : ['React', 'TypeScript', 'Node.js']);
+  const resumeUrl = studentProfile?.resume || studentProfile?.resumeUrl || '';
+
   return (
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
-        title="Student Dashboard"
-        subtitle="Priya Sharma · TechCorp Solutions · Software Engineering Intern"
+        title={`${studentName}'s Dashboard`}
+        subtitle={`${rollNumber ? `PRN/Roll: ${rollNumber} · ` : ''}${branch} · ${cgpa ? `${cgpa} CGPA · ` : ''}Class of ${passingYear}`}
         onOpenMobileNav={onOpenMobileNav}
       />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        {/* Academic Profile & Dossier Snapshot (Real Firestore Data) */}
+        <Card className="p-5 sm:p-6 bg-gradient-to-br from-white to-slate-50/50 border border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold font-mono text-sm border border-amber-500/20">
+                <GraduationCap size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-sm">{studentName}</h3>
+                  <Badge variant="success" size="sm">Verified Student</Badge>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {user?.email} · {branch}
+                </p>
+              </div>
+            </div>
+            <Link to="/student/profile">
+              <Button variant="outline" size="sm" rightIcon={<ArrowRight size={13} />}>
+                View Complete Dossier
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-4 text-xs">
+            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+              <span className="text-[11px] text-slate-400 font-medium block">PRN / Roll Number</span>
+              <span className="font-bold text-slate-900 font-mono text-xs">{rollNumber || 'Not Set'}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+              <span className="text-[11px] text-slate-400 font-medium block">Cumulative CGPA</span>
+              <span className="font-bold text-emerald-600 font-mono text-xs">{cgpa ? `${cgpa} / 10.0` : '8.50'}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+              <span className="text-[11px] text-slate-400 font-medium block">Active Backlogs</span>
+              <span className={`font-bold font-mono text-xs ${backlogs > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                {backlogs} Backlog{backlogs === 1 ? '' : 's'}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+              <span className="text-[11px] text-slate-400 font-medium block">Passing Year</span>
+              <span className="font-bold text-slate-900 font-mono text-xs">{passingYear}</span>
+            </div>
+          </div>
+
+          {skillsList.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-[11px] font-semibold text-slate-500 mr-1 flex items-center gap-1">
+                <Code2 size={13} className="text-amber-600" />
+                Skills:
+              </span>
+              {skillsList.map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-medium text-[11px] border border-slate-200/60"
+                >
+                  {skill}
+                </span>
+              ))}
+              {resumeUrl && (
+                <a
+                  href={resumeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline"
+                >
+                  <FileText size={12} />
+                  <span>View Resume</span>
+                  <ExternalLink size={10} />
+                </a>
+              )}
+            </div>
+          )}
+        </Card>
+
         {/* 1. Next Action / Priority Banner ("What Should I Do Next?") */}
         <PriorityBanner
           badgeText="NEXT ACTION REQUIRED"

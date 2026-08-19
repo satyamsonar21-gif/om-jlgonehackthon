@@ -4,15 +4,15 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-// Web app's Firebase configuration
+// Web app's Firebase configuration (supports environment variables)
 const firebaseConfig = {
-  apiKey: "AIzaSyBYFnTFyz8y96CLQdD_zdabg7nTxMg8QO0",
-  authDomain: "interniq-5a405.firebaseapp.com",
-  projectId: "interniq-5a405",
-  storageBucket: "interniq-5a405.firebasestorage.app",
-  messagingSenderId: "805720697730",
-  appId: "1:805720697730:web:96106b1d06a72bd207bd9b",
-  measurementId: "G-99CV4YDS3W"
+  apiKey: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) || "AIzaSyBYFnTFyz8y96CLQdD_zdabg7nTxMg8QO0",
+  authDomain: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) || "interniq-5a405.firebaseapp.com",
+  projectId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "interniq-5a405",
+  storageBucket: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || "interniq-5a405.firebasestorage.app",
+  messagingSenderId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || "805720697730",
+  appId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_APP_ID) || "1:805720697730:web:96106b1d06a72bd207bd9b",
+  measurementId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID) || "G-99CV4YDS3W"
 };
 
 // Initialize Firebase app singleton

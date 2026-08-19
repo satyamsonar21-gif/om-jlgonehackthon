@@ -32,9 +32,10 @@ import {
   Sliders,
   MapPin,
   Clock,
-  Loader2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { db } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 interface Project {
@@ -143,20 +144,40 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
       setLoading(true);
       try {
+        if (user?.uid) {
+          const studentDocSnap = await getDoc(doc(db, 'students', user.uid));
+          if (studentDocSnap.exists()) {
+            const s = studentDocSnap.data();
+            if (s.name) setName(s.name);
+            if (s.email) setEmail(s.email);
+            if (s.phone) setPhone(s.phone);
+            if (s.rollNumber || s.studentId) setStudentId(s.rollNumber || s.studentId);
+            if (s.branch || s.department) setDepartment(s.branch || s.department);
+            if (s.year) setYear(Number(s.year));
+            if (s.semester) setSemester(Number(s.semester));
+            if (s.cgpa) setCgpa(Number(s.cgpa));
+            if (s.passingYear) setPassingYear(Number(s.passingYear));
+            if (s.skills) {
+              setTechSkills(Array.isArray(s.skills) ? s.skills : s.skills.split(',').map((x: string) => x.trim()));
+            }
+            if (s.resume || s.resumeUrl) setResumeUrl(s.resume || s.resumeUrl);
+          }
+        }
+
         const res = await api.getMe();
         if (res.data) {
           const u = res.data;
-          setName(u.name || 'Aarav Patil');
-          setEmail(u.email || 'aarav.patil@ghrce.edu');
-          setPhone(u.phone || '+91 98765 43210');
+          if (u.name) setName(u.name);
+          if (u.email) setEmail(u.email);
+          if (u.phone) setPhone(u.phone);
           if (u.student) {
             const s = u.student;
-            setStudentId(s.studentId || '2023BCSE042');
-            setDepartment(s.department || 'Computer Science & Engineering');
-            setYear(s.year || 3);
-            setSemester(s.semester || 6);
-            setCgpa(s.cgpa || 8.85);
-            setPassingYear(s.passingYear || 2026);
+            if (s.studentId || s.rollNumber) setStudentId(s.studentId || s.rollNumber);
+            if (s.department || s.branch) setDepartment(s.department || s.branch);
+            if (s.year) setYear(s.year);
+            if (s.semester) setSemester(s.semester);
+            if (s.cgpa) setCgpa(s.cgpa);
+            if (s.passingYear) setPassingYear(s.passingYear);
             if (s.skills) {
               setTechSkills(Array.isArray(s.skills) ? s.skills : s.skills.split(',').map((x: string) => x.trim()));
             }
@@ -187,7 +208,7 @@ export default function ProfilePage() {
           }
         }
       } catch {
-        // Use defaults
+        // Keep loaded state
       } finally {
         setLoading(false);
       }
