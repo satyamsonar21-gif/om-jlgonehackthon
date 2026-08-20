@@ -32,9 +32,6 @@ import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { auth, db } from '@/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 type AccountType = 'STUDENT' | 'FACULTY' | 'COMPANY' | 'ADMIN';
 
