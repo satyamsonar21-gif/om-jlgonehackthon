@@ -24,7 +24,11 @@ import {
   Mail,
   GraduationCap,
   ExternalLink,
-  Code2
+  Code2,
+  AlertCircle,
+  RefreshCw,
+  ShieldCheck,
+  CheckCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
@@ -37,7 +41,9 @@ export default function StudentDashboardPage() {
   const { user } = useAuth();
 
   const [studentProfile, setStudentProfile] = useState<any>(user?.student || null);
-  const [loadingProfile, setLoadingProfile] = useState(!user?.student);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileNotFound, setProfileNotFound] = useState(false);
 
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -46,21 +52,38 @@ export default function StudentDashboardPage() {
   const [logHours, setLogHours] = useState('8');
 
   // Load real student profile from Firestore: students/{user.uid}
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (user?.uid) {
-        try {
-          const studentDocSnap = await getDoc(doc(db, 'students', user.uid));
-          if (studentDocSnap.exists()) {
-            setStudentProfile(studentDocSnap.data());
-          }
-        } catch (err) {
-          console.warn('Student profile fetch from Firestore notice:', err);
-        } finally {
-          setLoadingProfile(false);
+  const loadProfile = async () => {
+    if (!user?.uid) {
+      setLoadingProfile(false);
+      return;
+    }
+    setLoadingProfile(true);
+    setProfileError(null);
+    try {
+      const studentDocSnap = await getDoc(doc(db, 'students', user.uid));
+      if (studentDocSnap.exists()) {
+        const data = studentDocSnap.data();
+        setStudentProfile(data);
+        setProfileNotFound(false);
+      } else {
+        setProfileNotFound(true);
+        // Fallback to auth user state if available
+        if (user?.student) {
+          setStudentProfile(user.student);
         }
       }
-    };
+    } catch (err: any) {
+      console.warn('Student profile fetch from Firestore notice:', err);
+      setProfileError(err?.message || 'Failed to fetch student profile from Firestore');
+      if (user?.student) {
+        setStudentProfile(user.student);
+      }
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  useEffect(() => {
     loadProfile();
   }, [user?.uid]);
 
@@ -97,101 +120,176 @@ export default function StudentDashboardPage() {
   ];
 
   const studentName = studentProfile?.name || user?.name || user?.displayName || 'Student';
+  const studentEmail = studentProfile?.email || user?.email || '';
   const rollNumber = studentProfile?.rollNumber || studentProfile?.studentId || '';
-  const branch = studentProfile?.branch || studentProfile?.department || 'Engineering';
-  const cgpa = studentProfile?.cgpa;
-  const backlogs = studentProfile?.backlogs !== undefined ? studentProfile.backlogs : 0;
+  const branch = studentProfile?.branch || studentProfile?.department || 'Computer Science & Engineering';
+  const yearNum = studentProfile?.year ? `${studentProfile.year} Year` : '3rd Year';
+  const cgpa = studentProfile?.cgpa !== undefined ? Number(studentProfile.cgpa) : undefined;
+  const backlogs = studentProfile?.backlogs !== undefined ? Number(studentProfile.backlogs) : 0;
   const passingYear = studentProfile?.passingYear || 2026;
+  const isProfileCompleted = studentProfile?.profileCompleted ?? true;
+  const isVerified = studentProfile?.verified ?? false;
+  const certificationsCount = Array.isArray(studentProfile?.certifications) ? studentProfile.certifications.length : 0;
+  const experienceCount = Array.isArray(studentProfile?.experience) ? studentProfile.experience.length : 0;
+
   const skillsList: string[] = Array.isArray(studentProfile?.skills)
     ? studentProfile.skills
     : (typeof studentProfile?.skills === 'string' && studentProfile.skills
-        ? studentProfile.skills.split(',').map((s: string) => s.trim())
-        : ['React', 'TypeScript', 'Node.js']);
-  const resumeUrl = studentProfile?.resume || studentProfile?.resumeUrl || '';
+        ? studentProfile.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : []);
+  const resumeUrl = studentProfile?.resumeUrl || studentProfile?.resume || '';
 
   return (
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
         title={`${studentName}'s Dashboard`}
-        subtitle={`${rollNumber ? `PRN/Roll: ${rollNumber} · ` : ''}${branch} · ${cgpa ? `${cgpa} CGPA · ` : ''}Class of ${passingYear}`}
+        subtitle={`${rollNumber ? `PRN: ${rollNumber} · ` : ''}${branch} · ${cgpa !== undefined ? `${cgpa.toFixed(2)} CGPA · ` : ''}Class of ${passingYear}`}
         onOpenMobileNav={onOpenMobileNav}
       />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-        {/* Academic Profile & Dossier Snapshot (Real Firestore Data) */}
-        <Card className="p-5 sm:p-6 bg-gradient-to-br from-white to-slate-50/50 border border-slate-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold font-mono text-sm border border-amber-500/20">
-                <GraduationCap size={22} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-900 text-sm">{studentName}</h3>
-                  <Badge variant="success" size="sm">Verified Student</Badge>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {user?.email} · {branch}
-                </p>
-              </div>
+        {/* Academic Profile & Dossier Snapshot (Real Firestore Data: students/{uid}) */}
+        {loadingProfile ? (
+          <Card className="p-6 bg-white border border-slate-200">
+            <div className="flex items-center justify-center py-6 gap-3 text-slate-500 text-xs">
+              <RefreshCw size={18} className="animate-spin text-amber-600" />
+              <span>Loading student profile dossier from Firestore...</span>
             </div>
-            <Link to="/student/profile">
-              <Button variant="outline" size="sm" rightIcon={<ArrowRight size={13} />}>
-                View Complete Dossier
+          </Card>
+        ) : profileError ? (
+          <Card className="p-5 bg-red-50/50 border border-red-200 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-red-700 font-medium">
+                <AlertCircle size={18} className="text-red-600 shrink-0" />
+                <span>Unable to load student profile: {profileError}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={loadProfile} leftIcon={<RefreshCw size={12} />}>
+                Retry
               </Button>
-            </Link>
-          </div>
+            </div>
+          </Card>
+        ) : profileNotFound ? (
+          <Card className="p-5 bg-amber-50/50 border border-amber-200 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-amber-800">
+                <AlertCircle size={18} className="text-amber-600 shrink-0" />
+                <span>Student profile not yet initialized. Complete your student registration dossier.</span>
+              </div>
+              <Link to="/student/profile">
+                <Button variant="primary" size="sm" rightIcon={<ArrowRight size={13} />}>
+                  Initialize Profile
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-5 sm:p-6 bg-gradient-to-br from-white to-slate-50/50 border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold font-mono text-sm border border-amber-500/20">
+                  <GraduationCap size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm">{studentName}</h3>
+                    {isVerified ? (
+                      <Badge variant="success" size="sm">Verified Student</Badge>
+                    ) : (
+                      <Badge variant="warning" size="sm">Pending Verification</Badge>
+                    )}
+                    {isProfileCompleted ? (
+                      <Badge variant="info" size="sm">Profile Completed</Badge>
+                    ) : (
+                      <Badge variant="neutral" size="sm">Profile Incomplete</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {studentEmail} · {branch} · {yearNum}
+                  </p>
+                </div>
+              </div>
+              <Link to="/student/profile">
+                <Button variant="outline" size="sm" rightIcon={<ArrowRight size={13} />}>
+                  View Complete Dossier
+                </Button>
+              </Link>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-4 text-xs">
-            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
-              <span className="text-[11px] text-slate-400 font-medium block">PRN / Roll Number</span>
-              <span className="font-bold text-slate-900 font-mono text-xs">{rollNumber || 'Not Set'}</span>
-            </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
-              <span className="text-[11px] text-slate-400 font-medium block">Cumulative CGPA</span>
-              <span className="font-bold text-emerald-600 font-mono text-xs">{cgpa ? `${cgpa} / 10.0` : '8.50'}</span>
-            </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
-              <span className="text-[11px] text-slate-400 font-medium block">Active Backlogs</span>
-              <span className={`font-bold font-mono text-xs ${backlogs > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                {backlogs} Backlog{backlogs === 1 ? '' : 's'}
-              </span>
-            </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
-              <span className="text-[11px] text-slate-400 font-medium block">Passing Year</span>
-              <span className="font-bold text-slate-900 font-mono text-xs">{passingYear}</span>
-            </div>
-          </div>
-
-          {skillsList.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="text-[11px] font-semibold text-slate-500 mr-1 flex items-center gap-1">
-                <Code2 size={13} className="text-amber-600" />
-                Skills:
-              </span>
-              {skillsList.map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-medium text-[11px] border border-slate-200/60"
-                >
-                  {skill}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-4 text-xs">
+              <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+                <span className="text-[11px] text-slate-400 font-medium block">PRN / Roll Number</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{rollNumber || 'Not Set'}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+                <span className="text-[11px] text-slate-400 font-medium block">Cumulative CGPA</span>
+                <span className="font-bold text-emerald-600 font-mono text-xs">
+                  {cgpa !== undefined ? `${cgpa.toFixed(2)} / 10.0` : 'Not Available'}
                 </span>
-              ))}
-              {resumeUrl && (
-                <a
-                  href={resumeUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline"
-                >
-                  <FileText size={12} />
-                  <span>View Resume</span>
-                  <ExternalLink size={10} />
-                </a>
-              )}
+              </div>
+              <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+                <span className="text-[11px] text-slate-400 font-medium block">Active Backlogs</span>
+                <span className={`font-bold font-mono text-xs ${backlogs > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                  {backlogs} Backlog{backlogs === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+                <span className="text-[11px] text-slate-400 font-medium block">Passing Year</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{passingYear}</span>
+              </div>
             </div>
-          )}
-        </Card>
+
+            {/* Certifications & Experience Badges */}
+            <div className="grid grid-cols-2 gap-3.5 pt-3 text-xs">
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
+                  <Award size={13} className="text-amber-600" />
+                  Certifications:
+                </span>
+                <span className="font-semibold text-slate-800 text-[11px]">
+                  {certificationsCount} Credential{certificationsCount === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
+                  <Briefcase size={13} className="text-blue-600" />
+                  Experience:
+                </span>
+                <span className="font-semibold text-slate-800 text-[11px]">
+                  {experienceCount} Record{experienceCount === 1 ? '' : 's'}
+                </span>
+              </div>
+            </div>
+
+            {skillsList.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="text-[11px] font-semibold text-slate-500 mr-1 flex items-center gap-1">
+                  <Code2 size={13} className="text-amber-600" />
+                  Skills:
+                </span>
+                {skillsList.map((skill, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-medium text-[11px] border border-slate-200/60"
+                  >
+                    {skill}
+                  </span>
+                ))}
+                {resumeUrl && (
+                  <a
+                    href={resumeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline"
+                  >
+                    <FileText size={12} />
+                    <span>View Resume</span>
+                    <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* 1. Next Action / Priority Banner ("What Should I Do Next?") */}
         <PriorityBanner

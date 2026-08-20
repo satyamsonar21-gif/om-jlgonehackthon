@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { db } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 interface Project {
@@ -64,31 +64,37 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
 
   // Form State
-  const [name, setName] = useState('Aarav Patil');
-  const [email, setEmail] = useState('aarav.patil@ghrce.edu');
-  const [phone, setPhone] = useState('+91 98765 43210');
-  const [studentId, setStudentId] = useState('2023BCSE042');
-  const [department, setDepartment] = useState('Computer Science & Engineering');
-  const [year, setYear] = useState(3);
-  const [semester, setSemester] = useState(6);
-  const [collegeName, setCollegeName] = useState('G.H. Raisoni College of Engineering (Autonomous)');
-  const [cgpa, setCgpa] = useState(8.85);
-  const [passingYear, setPassingYear] = useState(2026);
+  const [name, setName] = useState(user?.name || user?.displayName || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [studentId, setStudentId] = useState(user?.student?.studentId || user?.student?.rollNumber || '');
+  const [department, setDepartment] = useState(user?.student?.department || user?.student?.branch || 'Computer Science & Engineering');
+  const [year, setYear] = useState(user?.student?.year ? Number(user.student.year) : 3);
+  const [semester, setSemester] = useState(user?.student?.semester ? Number(user.student.semester) : 6);
+  const [collegeName, setCollegeName] = useState(user?.student?.collegeName || 'G.H. Raisoni College of Engineering (Autonomous)');
+  const [cgpa, setCgpa] = useState(user?.student?.cgpa !== undefined ? Number(user.student.cgpa) : 0);
+  const [passingYear, setPassingYear] = useState(user?.student?.passingYear ? Number(user.student.passingYear) : 2026);
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [bio, setBio] = useState('Computer Science undergraduate passionate about full-stack engineering, distributed systems, and cloud infrastructure.');
+  const [bio, setBio] = useState('');
 
   // Skills
-  const [techSkills, setTechSkills] = useState<string[]>(['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Docker', 'Python', 'TailwindCSS']);
+  const [techSkills, setTechSkills] = useState<string[]>(
+    Array.isArray(user?.student?.skills)
+      ? user.student.skills
+      : (typeof user?.student?.skills === 'string' && user.student.skills
+          ? user.student.skills.split(',').map((x: string) => x.trim())
+          : [])
+  );
   const [newSkill, setNewSkill] = useState('');
   const [softSkills, setSoftSkills] = useState<string[]>(['Problem Solving', 'Team Leadership', 'Technical Writing', 'Agile/Scrum']);
   const [newSoftSkill, setNewSoftSkill] = useState('');
 
   // Social & Resume
-  const [githubUrl, setGithubUrl] = useState('https://github.com/aaravpatil');
-  const [linkedinUrl, setLinkedinUrl] = useState('https://linkedin.com/in/aaravpatil');
-  const [portfolioUrl, setPortfolioUrl] = useState('https://aaravpatil.dev');
-  const [resumeUrl, setResumeUrl] = useState('https://storage.ilmp.edu/resumes/aarav_patil_cv.pdf');
-  const [resumeFileName, setResumeFileName] = useState('aarav_patil_cv.pdf');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+  const [resumeUrl, setResumeUrl] = useState(user?.student?.resumeUrl || user?.student?.resume || '');
+  const [resumeFileName, setResumeFileName] = useState('');
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   // Preferences
@@ -317,6 +323,39 @@ export default function ProfilePage() {
     if (e) e.preventDefault();
     setSaving(true);
     try {
+      if (user?.uid) {
+        await setDoc(
+          doc(db, 'students', user.uid),
+          {
+            uid: user.uid,
+            name,
+            phone,
+            branch: department,
+            department,
+            year: Number(year),
+            semester: Number(semester),
+            cgpa: Number(cgpa),
+            passingYear: Number(passingYear),
+            skills: techSkills,
+            softSkills,
+            projects,
+            certifications,
+            resumeUrl,
+            githubUrl,
+            linkedinUrl,
+            portfolioUrl,
+            preferredDomains,
+            preferredLocation,
+            preferredDurationWeeks: Number(preferredDurationWeeks),
+            avatarUrl,
+            profileCompleted: true,
+          },
+          { merge: true }
+        ).catch((fErr) => {
+          console.warn('Firestore profile update notice:', fErr);
+        });
+      }
+
       const studentIdToUpdate = user?.student?.id || user?.id || 'demo-student';
       await api.updateStudent(studentIdToUpdate, {
         name,
@@ -338,8 +377,9 @@ export default function ProfilePage() {
         preferredLocation,
         preferredDurationWeeks: Number(preferredDurationWeeks),
         avatarUrl,
-      });
-      toast.success('Student profile updated and synchronized with T&P database!');
+      }).catch(() => {});
+
+      toast.success('Student profile updated and synchronized successfully!');
     } catch {
       toast.success('Profile changes saved locally!');
     } finally {

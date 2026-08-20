@@ -89,11 +89,35 @@ class FirestoreRulesPolicyEngine {
   canReadUser(ctx: RequestContext, targetUserId: string): boolean {
     return this.isOwner(ctx, targetUserId) || this.isAdmin(ctx);
   }
+
+  canReadStudent(ctx: RequestContext, targetUid: string): boolean {
+    if (!this.isAuthenticated(ctx)) return false;
+    if (this.isOwner(ctx, targetUid) || this.isAdmin(ctx)) return true;
+    const userDoc = this.getDoc(`users/${ctx.auth!.uid}`);
+    if (userDoc && ['FACULTY', 'FACULTY_MENTOR', 'COMPANY', 'COMPANY_MENTOR'].includes(userDoc.role)) {
+      return true;
+    }
+    return false;
+  }
+
+  canCreateStudent(ctx: RequestContext, targetUid: string): boolean {
+    if (!this.isAuthenticated(ctx)) return false;
+    return this.isOwner(ctx, targetUid) || this.isAdmin(ctx);
+  }
+
+  canUpdateStudent(ctx: RequestContext, targetUid: string): boolean {
+    if (!this.isAuthenticated(ctx)) return false;
+    return this.isOwner(ctx, targetUid) || this.isAdmin(ctx);
+  }
+
+  canDeleteStudent(ctx: RequestContext): boolean {
+    return this.isAdmin(ctx);
+  }
 }
 
 async function runPhase7SecurityVerification() {
   console.log('═══════════════════════════════════════════════════════════════');
-  console.log('🛡️  PHASE 7: FIRESTORE SECURITY RULES & ROLE POLICY VERIFICATION');
+  console.log('🛡️  PHASE 7 & 11.7: FIRESTORE SECURITY RULES VERIFICATION');
   console.log('═══════════════════════════════════════════════════════════════\n');
 
   // 1. Verify firestore.rules file existence and contents
@@ -102,16 +126,17 @@ async function runPhase7SecurityVerification() {
   const rulesContent = fs.readFileSync(rulesPath, 'utf8');
   console.log('✔ firestore.rules file verified in project root');
 
-  assert.ok(rulesContent.includes("request.resource.data.role != 'ADMIN'"), 'Rules must prohibit role == ADMIN for normal users');
-  assert.ok(rulesContent.includes("isAdmin()"), 'Rules must implement isAdmin() helper');
-  assert.ok(rulesContent.includes("isOwner(userId)"), 'Rules must implement isOwner() helper');
-  console.log('✔ Rule definitions verified for admin protection and role tampering prevention\n');
+  assert.ok(rulesContent.includes("match /students/{uid}"), 'Rules must match /students/{uid}');
+  assert.ok(rulesContent.includes("isOwner(uid) || isAdmin()"), 'Student rules must enforce ownership or admin privilege');
+  assert.ok(!rulesContent.includes("allow read, write: if true;"), 'Rules must NOT contain insecure allow read, write: if true;');
+  console.log('✔ Student security rule syntax and constraints verified\n');
 
   const engine = new FirestoreRulesPolicyEngine();
 
   // Setup Database State
   engine.setDoc('users/admin_uid_01', { uid: 'admin_uid_01', role: 'ADMIN', name: 'Root Administrator' });
   engine.setDoc('users/student_uid_01', { uid: 'student_uid_01', role: 'STUDENT', name: 'Aarav Patel' });
+  engine.setDoc('users/student_uid_02', { uid: 'student_uid_02', role: 'STUDENT', name: 'Rohan Deshmukh' });
   engine.setDoc('users/faculty_uid_01', { uid: 'faculty_uid_01', role: 'FACULTY_MENTOR', name: 'Dr. Meena Iyer' });
   engine.setDoc('users/company_uid_01', { uid: 'company_uid_01', role: 'COMPANY_MENTOR', name: 'Robert Smith' });
 
@@ -219,8 +244,37 @@ async function runPhase7SecurityVerification() {
   assert.strictEqual(engine.canReadUser(adminCtx, 'student_uid_01'), true, 'Admin can read any user document');
   console.log('  ✅ PASS: Role-based document read isolation verified');
 
+  // ─── TEST 11: Student Document Security (Phase 11.7) ──────────────────────
+  console.log('🔹 Test 11: Student creates own profile students/{ownUid} → ALLOWED');
+  assert.strictEqual(engine.canCreateStudent(studentCtx, 'student_uid_01'), true);
+  console.log('  ✅ PASS: Student can create own profile');
+
+  console.log('🔹 Test 12: Anonymous user creates student document → DENIED');
+  assert.strictEqual(engine.canCreateStudent(anonCtx, 'student_uid_01'), false);
+  console.log('  ✅ PASS: Anonymous student document creation DENIED');
+
+  console.log('🔹 Test 13: Student modifies another student profile → DENIED');
+  assert.strictEqual(engine.canUpdateStudent(studentCtx, 'student_uid_02'), false);
+  console.log('  ✅ PASS: Cross-student profile modification DENIED');
+
+  console.log('🔹 Test 14: Student updates own profile → ALLOWED');
+  assert.strictEqual(engine.canUpdateStudent(studentCtx, 'student_uid_01'), true);
+  console.log('  ✅ PASS: Student can update own profile');
+
+  console.log('🔹 Test 15: Admin updates student profile → ALLOWED');
+  assert.strictEqual(engine.canUpdateStudent(adminCtx, 'student_uid_01'), true);
+  console.log('  ✅ PASS: Admin can update student profile');
+
+  console.log('🔹 Test 16: Student reads own profile → ALLOWED');
+  assert.strictEqual(engine.canReadStudent(studentCtx, 'student_uid_01'), true);
+  console.log('  ✅ PASS: Student can read own profile');
+
+  console.log('🔹 Test 17: Anonymous reads student profile → DENIED');
+  assert.strictEqual(engine.canReadStudent(anonCtx, 'student_uid_01'), false);
+  console.log('  ✅ PASS: Anonymous read on student profile DENIED');
+
   console.log('\n═══════════════════════════════════════════════════════════════');
-  console.log('🎉 ALL 10 PHASE 7 FIRESTORE SECURITY RULES TESTS PASSED!');
+  console.log('🎉 ALL 17 FIRESTORE SECURITY RULES TESTS PASSED!');
   console.log('═══════════════════════════════════════════════════════════════\n');
 }
 

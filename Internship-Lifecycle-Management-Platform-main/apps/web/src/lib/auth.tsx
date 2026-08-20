@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, setAuthToken } from './api';
 import { RoleKey } from '@/design-system/tokens';
 import { toast } from 'sonner';
-import { auth, db } from '@/firebase';
+import { auth, db, storage } from '@/firebase';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -12,6 +12,7 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const VALID_ROLES = [
   'STUDENT',
@@ -274,66 +275,109 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 1. Firebase Authentication account creation
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
-      const uid = firebaseUser.uid;
+      const firebaseUid = userCredential.user.uid;
+      const uid = firebaseUid;
 
       if (fullName) {
         await updateProfile(firebaseUser, { displayName: fullName }).catch(() => {});
       }
 
-      // 2. Format skills as array of strings
-      const skillsArray = Array.isArray(data.skills)
-        ? data.skills
-        : (typeof data.skills === 'string' && data.skills.trim()
-            ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
-            : ['React', 'TypeScript', 'Node.js']);
+      // 2. Real Firebase Storage Resume Upload (scoped to real firebaseUid)
+      let resumeUrl = '';
+      if (data.resumeFile instanceof File) {
+        const file = data.resumeFile;
 
-      // 3. Create users/{uid} document in Firestore
-      const userDocRef = doc(db, 'users', uid);
+        // Validate 5MB limit
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error('Resume file size exceeds maximum limit of 5MB.');
+        }
+
+        // Validate file type (PDF, DOC, DOCX)
+        const validMimes = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        if (!validMimes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
+          throw new Error('Only PDF, DOC, or DOCX resume formats are supported.');
+        }
+
+        try {
+          const sanitizedFileName = (file.name || 'resume.pdf').replace(/[^a-zA-Z0-9.-]/g, '_');
+          const storagePath = `resumes/${firebaseUid}/${sanitizedFileName}`;
+          const storageRef = ref(storage, storagePath);
+
+          const uploadSnapshot = await uploadBytes(storageRef, file, {
+            contentType: file.type || 'application/pdf',
+            customMetadata: {
+              originalName: file.name,
+              uploadedBy: firebaseUid,
+              uploadedAt: new Date().toISOString(),
+            },
+          });
+
+          resumeUrl = await getDownloadURL(uploadSnapshot.ref);
+        } catch (uploadErr: any) {
+          const uploadErrMsg = uploadErr.message || 'Failed to upload resume to Firebase Storage';
+          toast.error(uploadErrMsg);
+          throw new Error(uploadErrMsg);
+        }
+      } else if (typeof data.resumeUrl === 'string' && data.resumeUrl && !data.resumeUrl.includes('storage.ilmp.edu')) {
+        resumeUrl = data.resumeUrl;
+      }
+
+      // 3. Format skills as array of strings (convert comma-separated string if provided)
+      const skills = Array.isArray(data.skills)
+        ? data.skills.map((skill: any) => String(skill).trim()).filter(Boolean)
+        : (typeof data.skills === 'string'
+            ? data.skills.split(',').map((skill: string) => skill.trim()).filter(Boolean)
+            : []);
+
+      // 4. Create users/{firebaseUid} document in Firestore (Identity & Access Control)
+      const userDocRef = doc(db, 'users', firebaseUid);
       const userDocData = {
-        uid,
-        name: fullName,
-        displayName: fullName,
+        uid: firebaseUid,
         email: firebaseUser.email || email,
-        phone: data.phone || '',
+        name: fullName,
         role: 'STUDENT',
         status: 'ACTIVE',
-        department: branch,
-        collegeName: data.collegeName || '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-      await setDoc(userDocRef, userDocData);
+      await setDoc(userDocRef, userDocData, { merge: true });
 
-      // 4. Create role-specific students/{uid} document in Firestore matching exact schema
-      const studentDocRef = doc(db, 'students', uid);
+      // 5. Create role-specific students/{firebaseUid} document in Firestore matching exact schema
+      const studentDocRef = doc(db, 'students', firebaseUid);
       const studentDocData = {
+        uid: firebaseUid,
         name: fullName,
         email: firebaseUser.email || email,
         rollNumber: rollNumber,
         branch: branch,
+        year: Number(data.year) || 1,
         cgpa: Number(data.cgpa) || 0,
         backlogs: Number(data.backlogs) || 0,
-        passingYear: Number(data.passingYear) || 2026,
-        skills: skillsArray,
-        resume: data.resume || data.resumeUrl || '',
-        // Compatibility and dossier fields
-        uid,
-        userId: uid,
+        passingYear: Number(data.passingYear) || new Date().getFullYear(),
+        skills: skills,
+        certifications: Array.isArray(data.certifications) ? data.certifications : [],
+        experience: Array.isArray(data.experience) ? data.experience : [],
+        resumeUrl: resumeUrl,
+        profileCompleted: true,
+        verified: false,
+        // Additional compatibility & dossier fields
         phone: data.phone || '',
         studentId: rollNumber,
         enrollmentNumber: rollNumber,
         collegeName: data.collegeName || '',
         department: branch,
-        year: Number(data.year) || 3,
-        semester: Number(data.semester) || 6,
-        resumeUrl: data.resumeUrl || data.resume || '',
+        semester: Number(data.semester) || 1,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-      await setDoc(studentDocRef, studentDocData);
+      await setDoc(studentDocRef, studentDocData, { merge: true });
 
       // Synchronize with API backend asynchronously if available
-      api.registerStudent({ ...data, rollNumber, branch, firebaseUid: uid }).catch(() => {});
+      api.registerStudent({ ...data, rollNumber, branch, firebaseUid, resumeUrl }).catch(() => {});
 
       const appUser = {
         uid,
@@ -599,11 +643,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userData = userDocSnap.data();
           const rawRole = userData.role;
           if (rawRole && VALID_ROLES.includes(rawRole.toUpperCase())) {
+            let studentData = undefined;
+            if (rawRole.toUpperCase() === 'STUDENT') {
+              try {
+                const studentSnap = await getDoc(doc(db, 'students', currentUser.uid));
+                if (studentSnap.exists()) {
+                  studentData = studentSnap.data();
+                }
+              } catch (sErr) {
+                console.warn('Student profile fetch notice on refresh:', sErr);
+              }
+            }
             const appUser = {
               uid: currentUser.uid,
               id: currentUser.uid,
               email: currentUser.email,
               ...userData,
+              student: studentData,
             };
             setUser(appUser);
             setActiveRole(normalizeRoleToKey(rawRole));

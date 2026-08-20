@@ -49,6 +49,7 @@ export default function SignUpPage() {
 
   // Student Multi-step state (1: Personal, 2: Academic, 3: Skills & Resume, 4: Credentials, 5: Verification, 6: Complete)
   const [studentStep, setStudentStep] = useState(1);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [studentData, setStudentData] = useState({
     name: '',
     email: '',
@@ -148,12 +149,14 @@ export default function SignUpPage() {
       return;
     }
 
+    setResumeFile(file);
     setStudentData({
       ...studentData,
       resumeFileName: file.name,
-      resumeUrl: `https://storage.ilmp.edu/resumes/${encodeURIComponent(file.name)}`,
+      resumeUrl: '',
     });
-    toast.success(`Resume "${file.name}" uploaded and validated!`);
+    const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
+    toast.success(`Resume "${file.name}" (${sizeInMb} MB) selected for secure upload!`);
   };
 
   // Submit Student Registration
@@ -175,6 +178,11 @@ export default function SignUpPage() {
     const fullName = studentData.name.trim();
     const email = studentData.email.trim().toLowerCase();
     const phone = studentData.phone.trim();
+    const rollNumber = studentData.rollNumber.trim() || studentData.studentId.trim();
+    const branch = studentData.branch.trim() || studentData.department.trim();
+    const cgpa = Number(studentData.cgpa);
+    const backlogs = Number(studentData.backlogs);
+    const passingYear = Number(studentData.passingYear);
 
     if (!fullName) {
       toast.error('Please enter your full name');
@@ -186,12 +194,35 @@ export default function SignUpPage() {
       return;
     }
 
+    if (!phone) {
+      toast.error('Please enter your mobile contact number');
+      return;
+    }
+
+    if (!rollNumber) {
+      toast.error('Please enter your enrollment / roll number (PRN)');
+      return;
+    }
+
+    if (isNaN(cgpa) || cgpa < 0 || cgpa > 10) {
+      toast.error('CGPA must be between 0.0 and 10.0');
+      return;
+    }
+
+    if (isNaN(backlogs) || backlogs < 0) {
+      toast.error('Active backlogs count cannot be negative');
+      return;
+    }
+
+    if (isNaN(passingYear) || passingYear < 2000 || passingYear > 2100) {
+      toast.error('Please enter a valid passing year (e.g. 2026)');
+      return;
+    }
+
     setLoading(true);
     try {
       const [firstName, ...restParts] = fullName.split(' ');
       const lastName = restParts.join(' ') || firstName || 'Student';
-      const rollNumber = studentData.rollNumber.trim() || studentData.studentId.trim();
-      const branch = studentData.branch.trim() || studentData.department.trim();
 
       await registerStudent({
         firstName,
@@ -210,11 +241,11 @@ export default function SignUpPage() {
         semester: Number(studentData.semester) || 6,
         collegeName: studentData.collegeName,
         skills: studentData.skills,
-        resume: studentData.resumeUrl || studentData.resume || '',
-        resumeUrl: studentData.resumeUrl || studentData.resume || '',
-        cgpa: Number(studentData.cgpa) || 8.0,
-        backlogs: Number(studentData.backlogs) || 0,
-        passingYear: Number(studentData.passingYear) || 2026,
+        resumeFile: resumeFile,
+        resumeUrl: '',
+        cgpa: isNaN(cgpa) ? 8.0 : cgpa,
+        backlogs: isNaN(backlogs) ? 0 : backlogs,
+        passingYear: isNaN(passingYear) ? 2026 : passingYear,
       });
 
       navigate('/student');
@@ -648,8 +679,12 @@ export default function SignUpPage() {
                     variant="primary"
                     size="md"
                     onClick={() => {
-                      if (!studentData.name || !studentData.email || !studentData.phone) {
+                      if (!studentData.name.trim() || !studentData.email.trim() || !studentData.phone.trim()) {
                         toast.error('Please complete all personal fields');
+                        return;
+                      }
+                      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentData.email.trim())) {
+                        toast.error('Please enter a valid email address');
                         return;
                       }
                       setStudentStep(2);
@@ -757,8 +792,24 @@ export default function SignUpPage() {
                     variant="primary"
                     size="md"
                     onClick={() => {
-                      if (!studentData.rollNumber && !studentData.studentId) {
-                        toast.error('Please enter your enrollment / roll number');
+                      const roll = (studentData.rollNumber || studentData.studentId).trim();
+                      if (!roll) {
+                        toast.error('Please enter your enrollment / roll number (PRN)');
+                        return;
+                      }
+                      const cgpaVal = Number(studentData.cgpa);
+                      if (isNaN(cgpaVal) || cgpaVal < 0 || cgpaVal > 10) {
+                        toast.error('CGPA must be between 0.0 and 10.0');
+                        return;
+                      }
+                      const backlogsVal = Number(studentData.backlogs);
+                      if (isNaN(backlogsVal) || backlogsVal < 0) {
+                        toast.error('Active backlogs count cannot be negative');
+                        return;
+                      }
+                      const passingYearVal = Number(studentData.passingYear);
+                      if (isNaN(passingYearVal) || passingYearVal < 2000 || passingYearVal > 2100) {
+                        toast.error('Please enter a valid passing year (e.g. 2026)');
                         return;
                       }
                       setStudentStep(3);
@@ -798,12 +849,19 @@ export default function SignUpPage() {
                       className="hidden"
                     />
                     <Upload size={22} className="text-amber-600 mb-1.5" />
-                    {studentData.resumeFileName ? (
+                    {resumeFile ? (
+                      <div className="text-center">
+                        <span className="font-bold text-emerald-700 block">{resumeFile.name}</span>
+                        <span className="text-[11px] text-emerald-600 font-medium">
+                          {(resumeFile.size / (1024 * 1024)).toFixed(2)} MB · Ready for secure Storage upload
+                        </span>
+                      </div>
+                    ) : studentData.resumeFileName ? (
                       <span className="font-bold text-emerald-700">{studentData.resumeFileName} (Ready)</span>
                     ) : (
                       <>
                         <span className="font-bold text-slate-800">Click to upload academic CV</span>
-                        <span className="text-[11px] text-slate-400 mt-0.5">PDF or Word format supported</span>
+                        <span className="text-[11px] text-slate-400 mt-0.5">PDF, DOC, or DOCX supported (Max 5MB)</span>
                       </>
                     )}
                   </label>

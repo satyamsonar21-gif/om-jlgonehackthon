@@ -89,10 +89,42 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─── STUDENTS COLLECTION: students/{studentId} ──────────────────────────
-    match /students/{studentId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(studentId) || (resource != null && isOwner(resource.data.userId)) || isAdmin();
+    // ─── STUDENTS COLLECTION: students/{uid} ────────────────────────────────
+    match /students/{uid} {
+      // READ:
+      // 1. Authenticated student can read their own profile (request.auth.uid == uid).
+      // 2. Authorized Admins, Faculty, and Company supervisors can read student dossiers.
+      // 3. Unauthenticated / anonymous users are strictly DENIED.
+      allow read: if isAuthenticated() && (
+        isOwner(uid) ||
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          getUserRole() == 'FACULTY' ||
+          getUserRole() == 'FACULTY_MENTOR' ||
+          getUserRole() == 'COMPANY' ||
+          getUserRole() == 'COMPANY_MENTOR'
+        ))
+      );
+
+      // CREATE:
+      // 1. Authenticated student can create their own profile document (request.auth.uid == uid).
+      // 2. Authorized Admins can create student records.
+      // 3. Unauthenticated / anonymous users are strictly DENIED.
+      allow create: if isAuthenticated() && (
+        isOwner(uid) || isAdmin()
+      );
+
+      // UPDATE:
+      // 1. Authenticated student can update their own profile document (request.auth.uid == uid).
+      // 2. Prevents one student from modifying another student's profile.
+      // 3. Authorized Admins can update student profiles.
+      allow update: if isAuthenticated() && (
+        isOwner(uid) || isAdmin()
+      );
+
+      // DELETE:
+      // Only authorized Admins can delete student profiles.
+      allow delete: if isAdmin();
     }
 
     // ─── FACULTY COLLECTION: faculty/{facultyId} ────────────────────────────
