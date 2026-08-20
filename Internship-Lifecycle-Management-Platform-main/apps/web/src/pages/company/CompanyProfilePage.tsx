@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
@@ -46,8 +46,11 @@ export default function CompanyProfilePage() {
       if (!user?.uid) return;
       setLoading(true);
       try {
-        const docSnap = await getDoc(doc(db, 'companies', user.uid));
-        if (docSnap.exists()) {
+        let docSnap = await getDoc(doc(db, 'companyMentors', user.uid)).catch(() => null);
+        if (!docSnap || !docSnap.exists()) {
+          docSnap = await getDoc(doc(db, 'companies', user.uid)).catch(() => null);
+        }
+        if (docSnap && docSnap.exists()) {
           const c = docSnap.data();
           if (c.companyName) setName(c.companyName);
           if (c.domain) setDomain(c.domain);
@@ -92,16 +95,19 @@ export default function CompanyProfilePage() {
         updatedAt: serverTimestamp(),
       };
 
-      await setDoc(doc(db, 'companies', user.uid), payload, { merge: true });
-      await setDoc(doc(db, 'users', user.uid), {
-        name: contactPerson.trim(),
-        companyName: name.trim(),
-        domain: domain.trim(),
-        website: website.trim(),
-        phone: contactPhone.trim(),
-        location: location.trim(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      await Promise.all([
+        setDoc(doc(db, 'companyMentors', user.uid), payload, { merge: true }),
+        setDoc(doc(db, 'companies', user.uid), payload, { merge: true }),
+        setDoc(doc(db, 'users', user.uid), {
+          name: contactPerson.trim(),
+          companyName: name.trim(),
+          domain: domain.trim(),
+          website: website.trim(),
+          phone: contactPhone.trim(),
+          location: location.trim(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true }),
+      ]);
 
       api.updateCompany(user.uid, payload).catch(() => {});
       await refreshUser().catch(() => {});

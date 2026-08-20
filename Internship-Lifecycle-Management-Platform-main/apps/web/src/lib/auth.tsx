@@ -55,14 +55,14 @@ export function formatFirebaseError(err: any, fallbackMessage: string): string {
   const code = err.code || '';
   const message = (err.message || '').toString();
 
-  // Firestore Database Not Found (Database '(default)' not created in Firebase Console)
+  // Firestore Database Not Found (Database '(default)' not provisioned or mismatch)
   if (
     message.includes('(default)') ||
     (message.includes('not found') && message.includes('Database')) ||
     (message.includes('NOT_FOUND') && message.includes('database')) ||
     code === 'not-found'
   ) {
-    return "Cloud Firestore database '(default)' was not found on Firebase project 'interniq-5a405'. Please enable/create Cloud Firestore in the Firebase Console (https://console.firebase.google.com/project/interniq-5a405/firestore).";
+    return "Cloud Firestore database '(default)' was not found on project 'interniq-5a405'. Please ensure Cloud Firestore is enabled in Native Mode in the Firebase Console (https://console.firebase.google.com/project/interniq-5a405/firestore).";
   }
 
   // Firestore Timeout
@@ -117,10 +117,10 @@ export function formatFirebaseError(err: any, fallbackMessage: string): string {
 
 /**
  * Multi-Collection Profile Resolver
- * Queries users/{UID} followed by the role-specific collections:
+ * Queries users/{UID} followed by role-specific collections:
  * - students/{UID}
  * - faculty/{UID}
- * - companies/{UID}
+ * - companyMentors/{UID} (and companies/{UID})
  * - admins/{UID}
  */
 async function fetchFullUserProfile(uid: string, email?: string | null): Promise<any | null> {
@@ -130,18 +130,19 @@ async function fetchFullUserProfile(uid: string, email?: string | null): Promise
   try {
     userDocSnap = await getDoc(userDocRef);
   } catch (err: any) {
-    console.error('Error fetching user document from Firestore:', err);
+    console.error('Error fetching users/' + uid + ' from Firestore:', err);
     return null;
   }
 
   let userData = userDocSnap && userDocSnap.exists() ? userDocSnap.data() : null;
 
-  // Self-Healing Fallback: If users/{UID} is missing, search role-specific collections
+  // Fallback check across role collections if users/{UID} document is missing
   if (!userData) {
     try {
-      const [stuSnap, facSnap, compSnap, admSnap] = await Promise.all([
+      const [stuSnap, facSnap, compMentorSnap, compSnap, admSnap] = await Promise.all([
         getDoc(doc(db, 'students', uid)).catch(() => null),
         getDoc(doc(db, 'faculty', uid)).catch(() => null),
+        getDoc(doc(db, 'companyMentors', uid)).catch(() => null),
         getDoc(doc(db, 'companies', uid)).catch(() => null),
         getDoc(doc(db, 'admins', uid)).catch(() => null),
       ]);
@@ -166,13 +167,13 @@ async function fetchFullUserProfile(uid: string, email?: string | null): Promise
           status: fData.status || 'PENDING_APPROVAL',
         };
         setDoc(userDocRef, { ...userData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
-      } else if (compSnap && compSnap.exists()) {
-        const cData = compSnap.data();
+      } else if ((compMentorSnap && compMentorSnap.exists()) || (compSnap && compSnap.exists())) {
+        const cData = compMentorSnap?.exists() ? compMentorSnap.data() : compSnap?.data();
         userData = {
           uid,
-          email: email || cData.contactEmail,
+          email: email || cData.contactEmail || cData.email,
           name: cData.contactPerson || cData.companyName || 'Company Mentor',
-          role: 'COMPANY',
+          role: 'COMPANY_MENTOR',
           status: cData.status || 'PENDING_APPROVAL',
         };
         setDoc(userDocRef, { ...userData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
@@ -223,7 +224,10 @@ async function fetchFullUserProfile(uid: string, email?: string | null): Promise
     }
   } else if (rawRole === 'COMPANY' || rawRole === 'COMPANY_MENTOR') {
     try {
-      const companySnap = await getDoc(doc(db, 'companies', uid));
+      let companySnap = await getDoc(doc(db, 'companyMentors', uid)).catch(() => null);
+      if (!companySnap || !companySnap.exists()) {
+        companySnap = await getDoc(doc(db, 'companies', uid)).catch(() => null);
+      }
       if (companySnap && companySnap.exists()) {
         roleData = companySnap.data();
       }
@@ -248,7 +252,8 @@ async function fetchFullUserProfile(uid: string, email?: string | null): Promise
     ...userData,
     student: rawRole === 'STUDENT' ? roleData : undefined,
     faculty: rawRole === 'FACULTY' || rawRole === 'FACULTY_MENTOR' ? roleData : undefined,
-    company: rawRole === 'COMPANY' || rawRole === 'COMPANY_MENTOR' ? roleData : undefined,
+    company: (rawRole === 'COMPANY' || rawRole === 'COMPANY_MENTOR') ? roleData : undefined,
+    companyMentor: (rawRole === 'COMPANY' || rawRole === 'COMPANY_MENTOR') ? roleData : undefined,
     admin: ['ADMIN', 'TNP_ADMIN', 'HOD_ADMIN', 'SUPER_ADMIN'].includes(rawRole) ? roleData : undefined,
     roleData,
   };
@@ -343,7 +348,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fullProfile = await fetchFullUserProfile(uid, firebaseUser.email);
 
       if (!fullProfile) {
-        // Handle missing Firestore profile: clean sign out from Auth to prevent stuck state
+        // Handle missing Firestore profile: sign out from Auth to prevent inconsistent state
         await signOut(auth).catch(() => {});
         setUser(null);
         setAuthToken(null);
@@ -470,7 +475,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           resumeUrl = await getDownloadURL(uploadSnapshot.ref);
         } catch (storageErr: any) {
           console.error('Firebase Storage upload error:', storageErr);
-          // Roll back Auth user on failure
           if (createdAuthUser) {
             await createdAuthUser.delete().catch(() => {});
           }
@@ -491,7 +495,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? data.skills.split(',').map((skill: string) => skill.trim()).filter(Boolean)
         : [];
 
-      // 5. Document Payloads with strict Firebase UID as primary key
+      // 5. Document Payloads with strict Firebase UID as document ID
       const userDocData = {
         uid: firebaseUid,
         email: createdAuthUser.email || email,
@@ -536,7 +540,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ]);
       } catch (firestoreErr: any) {
         console.error('Firestore write failure during student registration:', firestoreErr);
-        // Roll back Auth user on Firestore failure to prevent orphaned accounts
         if (createdAuthUser) {
           await createdAuthUser.delete().catch((delErr) => {
             console.warn('Could not roll back Auth user on Firestore failure:', delErr);
@@ -549,7 +552,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(friendlyFirestoreMsg);
       }
 
-      // Synchronize with API backend asynchronously if available
       api.registerStudent({ ...data, rollNumber, branch, firebaseUid, resumeUrl }).catch(() => {});
 
       const appUser = {
@@ -613,7 +615,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateProfile(createdAuthUser, { displayName: fullName }).catch(() => {});
       }
 
-      // 2. Document Payloads
+      // 2. Document Payloads with strict Firebase UID
       const userDocData = {
         uid: firebaseUid,
         name: fullName,
@@ -727,7 +729,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateProfile(createdAuthUser, { displayName: contactPerson || companyName }).catch(() => {});
       }
 
-      // 2. Document Payloads
+      // 2. Document Payloads with strict Firebase UID
       const userDocData = {
         uid: firebaseUid,
         name: contactPerson || companyName,
@@ -735,7 +737,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: contactPerson || companyName,
         email,
         phone: data.contactPhone || data.phone || '',
-        role: 'COMPANY',
+        role: 'COMPANY_MENTOR',
         status: 'PENDING_APPROVAL',
         domain: data.domain || '',
         location: data.location || '',
@@ -760,10 +762,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: serverTimestamp(),
       };
 
-      // 3. Firestore: Create users/{UID} and companies/{UID}
+      // 3. Firestore: Create users/{UID}, companyMentors/{UID} and companies/{UID}
       try {
         await Promise.all([
           setDoc(doc(db, 'users', firebaseUid), userDocData),
+          setDoc(doc(db, 'companyMentors', firebaseUid), companyDocData),
           setDoc(doc(db, 'companies', firebaseUid), companyDocData),
         ]);
       } catch (firestoreErr: any) {
@@ -786,6 +789,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         ...userDocData,
         company: companyDocData,
+        companyMentor: companyDocData,
       };
 
       setUser(appUser);
@@ -844,7 +848,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateProfile(createdAuthUser, { displayName: fullName }).catch(() => {});
       }
 
-      // 2. Document Payloads
+      // 2. Document Payloads with strict Firebase UID
       const userDocData = {
         uid: firebaseUid,
         email,

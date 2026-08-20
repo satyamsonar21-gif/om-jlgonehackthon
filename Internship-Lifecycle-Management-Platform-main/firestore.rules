@@ -1,4 +1,4 @@
-﻿rules_version = '2';
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -103,6 +103,22 @@ service cloud.firestore {
       // Cross-faculty modifications are strictly forbidden
       allow create, update: if isAuthenticated() && (
         isOwner(facultyId) ||
+        (resource != null && isOwner(resource.data.userId)) ||
+        isAdmin()
+      );
+
+      // DELETE: Strictly restricted to authorized Administrators
+      allow delete: if isAdmin();
+    }
+
+    // ─── COMPANY MENTORS COLLECTION: companyMentors/{mentorId} ─────────────
+    match /companyMentors/{mentorId} {
+      // READ: Authenticated users can view corporate mentor directory
+      allow read: if isAuthenticated();
+
+      // CREATE & UPDATE: Only the corporate mentor owner (UID match) or authorized Admins
+      allow create, update: if isAuthenticated() && (
+        isOwner(mentorId) ||
         (resource != null && isOwner(resource.data.userId)) ||
         isAdmin()
       );
