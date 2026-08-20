@@ -53,6 +53,35 @@ export function getRoleDashboardPath(role: string, status?: string): string {
 export function formatFirebaseError(err: any, fallbackMessage: string): string {
   if (!err) return fallbackMessage;
   const code = err.code || '';
+  const message = (err.message || '').toString();
+
+  // Firestore Database Not Found (Database '(default)' not created in Firebase Console)
+  if (
+    message.includes('(default)') ||
+    (message.includes('not found') && message.includes('Database')) ||
+    (message.includes('NOT_FOUND') && message.includes('database')) ||
+    code === 'not-found'
+  ) {
+    return "Cloud Firestore database '(default)' was not found on Firebase project 'interniq-5a405'. Please enable/create Cloud Firestore in the Firebase Console (https://console.firebase.google.com/project/interniq-5a405/firestore).";
+  }
+
+  // Firestore Timeout
+  if (code === 'FIRESTORE_TIMEOUT' || message.includes('FIRESTORE_TIMEOUT') || code === 'deadline-exceeded') {
+    return 'Firestore database operation timed out. Please verify Firestore is active and check network connectivity.';
+  }
+
+  // Firebase Storage CORS / Missing Bucket
+  if (
+    message.includes('CORS') ||
+    message.includes('preflight') ||
+    message.includes('ERR_FAILED') ||
+    code === 'storage/unknown' ||
+    code === 'storage/cannot-slice-blob' ||
+    code === 'storage/bucket-not-found'
+  ) {
+    return "Firebase Storage bucket not accessible or blocked by CORS. Please verify Cloud Storage is enabled in Firebase Console (https://console.firebase.google.com/project/interniq-5a405/storage).";
+  }
+
   switch (code) {
     case 'auth/email-already-in-use':
       return 'An account with this email address already exists. Please sign in instead.';
@@ -72,200 +101,147 @@ export function formatFirebaseError(err: any, fallbackMessage: string): string {
     case 'auth/network-request-failed':
       return 'Network error. Please check your internet connection and try again.';
     case 'permission-denied':
-      return 'Permission denied by Firestore security rules.';
+      return 'Permission denied by Firestore security rules. Check firestore.rules configuration.';
     case 'unavailable':
       return 'Database service is temporarily unavailable. Please try again in a moment.';
+    case 'storage/unauthorized':
+      return 'Storage permission denied. You are not authorized to upload to this path.';
+    case 'storage/quota-exceeded':
+      return 'Storage quota exceeded for this Firebase project.';
+    case 'storage/retry-limit-exceeded':
+      return 'Storage operation timed out. Please try again.';
     default:
       return err.message || fallbackMessage;
   }
 }
 
-// Timeout wrapper for Firestore operations
-async function withTimeout<T>(promise: Promise<T>, ms: number = 3000): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('FIRESTORE_TIMEOUT')), ms)),
-  ]);
-}
-
-// Local cache helpers
-function saveLocalProfile(uid: string, profile: any) {
-  try {
-    if (typeof window !== 'undefined' && uid && profile) {
-      localStorage.setItem(`ilmp_profile_${uid}`, JSON.stringify(profile));
-      localStorage.setItem('ilmp_user_id', uid);
-      if (profile.role) {
-        localStorage.setItem('ilmp_active_role', normalizeRoleToKey(profile.role));
-      }
-    }
-  } catch (e) {
-    console.warn('Could not cache profile locally:', e);
-  }
-}
-
-function getLocalProfile(uid: string): any | null {
-  try {
-    if (typeof window !== 'undefined' && uid) {
-      const raw = localStorage.getItem(`ilmp_profile_${uid}`);
-      if (raw) return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.warn('Could not read local profile cache:', e);
-  }
-  return null;
-}
-
-// Safe Firestore write helper
-async function safeFirestoreSet(docRef: any, data: any, options: any = { merge: true }) {
-  try {
-    await withTimeout(setDoc(docRef, data, options), 3000);
-  } catch (err: any) {
-    console.warn('Firestore setDoc notice (using local cache backup):', err?.message || err);
-  }
-}
-
 /**
- * Multi-Collection Profile Resolver with Local Cache & Self-Healing Recovery
+ * Multi-Collection Profile Resolver
+ * Queries users/{UID} followed by the role-specific collections:
+ * - students/{UID}
+ * - faculty/{UID}
+ * - companies/{UID}
+ * - admins/{UID}
  */
 async function fetchFullUserProfile(uid: string, email?: string | null): Promise<any | null> {
-  const localCached = getLocalProfile(uid);
-
-  let userData: any = null;
-  let roleData: any = undefined;
-
+  const userDocRef = doc(db, 'users', uid);
+  let userDocSnap = null;
+  
   try {
-    const userDocRef = doc(db, 'users', uid);
-    const userDocSnap = await withTimeout(getDoc(userDocRef), 2500).catch(() => null);
-
-    if (userDocSnap && userDocSnap.exists()) {
-      userData = userDocSnap.data();
-    }
-  } catch (err) {
-    console.warn('Firestore user fetch timeout/notice:', err);
+    userDocSnap = await getDoc(userDocRef);
+  } catch (err: any) {
+    console.error('Error fetching user document from Firestore:', err);
+    return null;
   }
 
-  // If Firestore didn't return userData, fallback to local cache
-  if (!userData && localCached) {
-    userData = localCached;
-  }
+  let userData = userDocSnap && userDocSnap.exists() ? userDocSnap.data() : null;
 
-  // If still no userData, infer sensible fallback from email or auth
+  // Self-Healing Fallback: If users/{UID} is missing, search role-specific collections
   if (!userData) {
-    const inferredRole = 'STUDENT';
-    userData = {
-      uid,
-      id: uid,
-      email: email || '',
-      name: email?.split('@')[0] || 'Student User',
-      role: inferredRole,
-      status: 'ACTIVE',
-    };
+    try {
+      const [stuSnap, facSnap, compSnap, admSnap] = await Promise.all([
+        getDoc(doc(db, 'students', uid)).catch(() => null),
+        getDoc(doc(db, 'faculty', uid)).catch(() => null),
+        getDoc(doc(db, 'companies', uid)).catch(() => null),
+        getDoc(doc(db, 'admins', uid)).catch(() => null),
+      ]);
+
+      if (stuSnap && stuSnap.exists()) {
+        const sData = stuSnap.data();
+        userData = {
+          uid,
+          email: email || sData.email,
+          name: sData.name || 'Student',
+          role: 'STUDENT',
+          status: 'ACTIVE',
+        };
+        setDoc(userDocRef, { ...userData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      } else if (facSnap && facSnap.exists()) {
+        const fData = facSnap.data();
+        userData = {
+          uid,
+          email: email || fData.email,
+          name: fData.name || 'Faculty Member',
+          role: 'FACULTY',
+          status: fData.status || 'PENDING_APPROVAL',
+        };
+        setDoc(userDocRef, { ...userData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      } else if (compSnap && compSnap.exists()) {
+        const cData = compSnap.data();
+        userData = {
+          uid,
+          email: email || cData.contactEmail,
+          name: cData.contactPerson || cData.companyName || 'Company Mentor',
+          role: 'COMPANY',
+          status: cData.status || 'PENDING_APPROVAL',
+        };
+        setDoc(userDocRef, { ...userData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      } else if (admSnap && admSnap.exists()) {
+        const aData = admSnap.data();
+        userData = {
+          uid,
+          email: email || aData.email,
+          name: aData.name || 'Administrator',
+          role: 'ADMIN',
+          roleTier: aData.roleTier || 'TNP_ADMIN',
+          status: 'ACTIVE',
+        };
+        setDoc(userDocRef, { ...userData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      }
+    } catch (err) {
+      console.warn('Role collection fallback lookup notice:', err);
+    }
   }
 
-  const rawRole = (userData.role || 'STUDENT').toUpperCase();
+  if (!userData) {
+    return null;
+  }
 
-  // Try fetching role-specific doc
+  const rawRole = (userData.role || '').toUpperCase();
+  if (!rawRole || !VALID_ROLES.includes(rawRole)) {
+    return null;
+  }
+
+  let roleData: any = undefined;
   if (rawRole === 'STUDENT') {
     try {
-      const studentSnap = await withTimeout(getDoc(doc(db, 'students', uid)), 2000).catch(() => null);
+      const studentSnap = await getDoc(doc(db, 'students', uid));
       if (studentSnap && studentSnap.exists()) {
         roleData = studentSnap.data();
       }
-    } catch {
-      // Ignore
-    }
-    if (!roleData && localCached?.student) {
-      roleData = localCached.student;
-    }
-    if (!roleData) {
-      roleData = {
-        uid,
-        name: userData.name || 'Student',
-        email: email || userData.email,
-        rollNumber: '2023BCSE001',
-        branch: 'Computer Science & Engineering',
-        year: 3,
-        semester: 6,
-        cgpa: 8.5,
-        backlogs: 0,
-        passingYear: 2026,
-        skills: ['React', 'TypeScript', 'Node.js'],
-        profileCompleted: true,
-      };
+    } catch (err) {
+      console.warn('Student profile lookup notice:', err);
     }
   } else if (rawRole === 'FACULTY' || rawRole === 'FACULTY_MENTOR') {
     try {
-      const facultySnap = await withTimeout(getDoc(doc(db, 'faculty', uid)), 2000).catch(() => null);
+      const facultySnap = await getDoc(doc(db, 'faculty', uid));
       if (facultySnap && facultySnap.exists()) {
         roleData = facultySnap.data();
       }
-    } catch {
-      // Ignore
-    }
-    if (!roleData && localCached?.faculty) {
-      roleData = localCached.faculty;
-    }
-    if (!roleData) {
-      roleData = {
-        uid,
-        userId: uid,
-        name: userData.name || 'Faculty Member',
-        email: email || userData.email,
-        department: userData.department || 'Computer Science & Engineering',
-        designation: userData.designation || 'Assistant Professor',
-        status: userData.status || 'ACTIVE',
-      };
+    } catch (err) {
+      console.warn('Faculty profile lookup notice:', err);
     }
   } else if (rawRole === 'COMPANY' || rawRole === 'COMPANY_MENTOR') {
     try {
-      const companySnap = await withTimeout(getDoc(doc(db, 'companies', uid)), 2000).catch(() => null);
+      const companySnap = await getDoc(doc(db, 'companies', uid));
       if (companySnap && companySnap.exists()) {
         roleData = companySnap.data();
       }
-    } catch {
-      // Ignore
-    }
-    if (!roleData && localCached?.company) {
-      roleData = localCached.company;
-    }
-    if (!roleData) {
-      roleData = {
-        uid,
-        userId: uid,
-        companyName: userData.companyName || userData.name || 'Corporate Partner',
-        contactPerson: userData.name || 'Supervisor',
-        contactEmail: email || userData.email,
-        domain: userData.domain || 'Software Engineering',
-        status: userData.status || 'ACTIVE',
-      };
+    } catch (err) {
+      console.warn('Company profile lookup notice:', err);
     }
   } else if (['ADMIN', 'TNP_ADMIN', 'HOD_ADMIN', 'SUPER_ADMIN'].includes(rawRole)) {
     try {
-      const adminSnap = await withTimeout(getDoc(doc(db, 'admins', uid)), 2000).catch(() => null);
+      const adminSnap = await getDoc(doc(db, 'admins', uid));
       if (adminSnap && adminSnap.exists()) {
         roleData = adminSnap.data();
       }
-    } catch {
-      // Ignore
-    }
-    if (!roleData && localCached?.admin) {
-      roleData = localCached.admin;
-    }
-    if (!roleData) {
-      roleData = {
-        uid,
-        userId: uid,
-        name: userData.name || 'Administrator',
-        email: email || userData.email,
-        role: 'ADMIN',
-        roleTier: userData.roleTier || 'TNP_ADMIN',
-        department: userData.department || 'Training & Placement Cell',
-        status: 'ACTIVE',
-      };
+    } catch (err) {
+      console.warn('Admin profile lookup notice:', err);
     }
   }
 
-  const fullProfile = {
+  return {
     uid,
     id: uid,
     email: email || userData.email,
@@ -276,9 +252,6 @@ async function fetchFullUserProfile(uid: string, email?: string | null): Promise
     admin: ['ADMIN', 'TNP_ADMIN', 'HOD_ADMIN', 'SUPER_ADMIN'].includes(rawRole) ? roleData : undefined,
     roleData,
   };
-
-  saveLocalProfile(uid, fullProfile);
-  return fullProfile;
 }
 
 interface AuthContextType {
@@ -306,13 +279,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    // Timeout guard to prevent infinite loading state
-    const timeoutTimer = setTimeout(() => {
-      if (isMounted) {
-        setLoading(false);
-      }
-    }, 4000);
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (!isMounted) return;
 
@@ -322,12 +288,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (token) setAuthToken(token);
 
           const fullProfile = await fetchFullUserProfile(firebaseUser.uid, firebaseUser.email);
-          if (isMounted && fullProfile) {
-            setUser(fullProfile);
-            setActiveRole(normalizeRoleToKey(fullProfile.role));
+          if (isMounted) {
+            if (fullProfile) {
+              setUser(fullProfile);
+              setActiveRole(normalizeRoleToKey(fullProfile.role));
+            } else {
+              setUser(null);
+            }
           }
         } catch (err) {
           console.error('Error resolving user profile on auth state change:', err);
+          if (isMounted) {
+            setUser(null);
+            setAuthToken(null);
+          }
         }
       } else {
         if (isMounted) {
@@ -338,13 +312,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (isMounted) {
         setLoading(false);
-        clearTimeout(timeoutTimer);
       }
     });
 
     return () => {
       isMounted = false;
-      clearTimeout(timeoutTimer);
       unsubscribe();
     };
   }, []);
@@ -367,19 +339,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const firebaseUser = userCredential.user;
       const uid = firebaseUser.uid;
 
-      // 2. Fetch profile
-      let fullProfile = await fetchFullUserProfile(uid, firebaseUser.email);
+      // 2. Fetch profile from Firestore
+      const fullProfile = await fetchFullUserProfile(uid, firebaseUser.email);
 
       if (!fullProfile) {
-        fullProfile = {
-          uid,
-          id: uid,
-          email: firebaseUser.email || email,
-          name: firebaseUser.displayName || email.split('@')[0],
-          role: 'STUDENT',
-          status: 'ACTIVE',
-        };
-        saveLocalProfile(uid, fullProfile);
+        // Handle missing Firestore profile: clean sign out from Auth to prevent stuck state
+        await signOut(auth).catch(() => {});
+        setUser(null);
+        setAuthToken(null);
+        const errorMsg = 'User profile was not found in Firestore. Please ensure your account has been registered and Cloud Firestore is created in the Firebase console.';
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
       }
 
       // 3. Handle suspended status
@@ -411,7 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         status: fullProfile.status,
       };
     } catch (err: any) {
-      const friendlyMsg = formatFirebaseError(err, 'Authentication failed. Please try again.');
+      const friendlyMsg = formatFirebaseError(err, 'Authentication failed. Please check your credentials.');
       toast.error(friendlyMsg);
       throw new Error(friendlyMsg);
     } finally {
@@ -419,10 +389,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ─── REAL STUDENT REGISTRATION (Firebase Auth + Firestore) ─────────────────
+  // ─── REAL STUDENT REGISTRATION (Firebase Auth + Storage + Firestore) ───────
   const registerStudent = useCallback(async (data: any) => {
     setLoading(true);
-    let firebaseUser: FirebaseUser | null = null;
+    let createdAuthUser: FirebaseUser | null = null;
     try {
       const email = (data.email || '').trim().toLowerCase();
       const password = data.password;
@@ -454,76 +424,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(msg);
       }
 
-      // 1. Firebase Authentication account creation with automatic recovery
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        firebaseUser = userCredential.user;
-      } catch (authErr: any) {
-        if (authErr?.code === 'auth/email-already-in-use') {
-          // Account already exists in Firebase Auth: Attempt auto sign-in with provided password
-          try {
-            const loginCred = await signInWithEmailAndPassword(auth, email, password);
-            firebaseUser = loginCred.user;
-            toast.info('Existing account detected. Updating profile and signing in...');
-          } catch (signInErr: any) {
-            const duplicateMsg = 'An account with this email address already exists. Please sign in with your password, or use Reset Password.';
-            toast.error(duplicateMsg);
-            throw new Error(duplicateMsg);
-          }
-        } else {
-          throw authErr;
-        }
-      }
+      // 1. Firebase Authentication: Create user account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      createdAuthUser = userCredential.user;
+      const firebaseUid = createdAuthUser.uid;
 
-      if (!firebaseUser) {
-        throw new Error('Authentication user could not be established.');
-      }
-
-      const firebaseUid = firebaseUser.uid;
-
+      // 2. Update Firebase Auth Profile Display Name
       if (fullName) {
-        await updateProfile(firebaseUser, { displayName: fullName }).catch(() => {});
+        await updateProfile(createdAuthUser, { displayName: fullName }).catch((e) => {
+          console.warn('Could not update Firebase Auth displayName:', e);
+        });
       }
 
-      // 2. Real Firebase Storage Resume Upload (if any)
+      // 3. Firebase Storage: Upload Resume (Optional) to students/{UID}/resumes/{filename}
       let resumeUrl = '';
       if (data.resumeFile instanceof File) {
         const file = data.resumeFile;
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error('Resume file size exceeds maximum limit of 10MB.');
+        }
+
+        const validMimes = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        if (!validMimes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
+          throw new Error('Only PDF, DOC, or DOCX resume formats are supported.');
+        }
+
         try {
           const sanitizedFileName = (file.name || 'resume.pdf').replace(/[^a-zA-Z0-9.-]/g, '_');
           const storagePath = `students/${firebaseUid}/resumes/${Date.now()}_${sanitizedFileName}`;
           const storageRef = ref(storage, storagePath);
 
-          const uploadSnapshot = await withTimeout(
-            uploadBytes(storageRef, file, {
-              contentType: file.type || 'application/pdf',
-              customMetadata: {
-                originalName: file.name,
-                uploadedBy: firebaseUid,
-                uploadedAt: new Date().toISOString(),
-              },
-            }),
-            5000
-          );
+          const uploadSnapshot = await uploadBytes(storageRef, file, {
+            contentType: file.type || 'application/pdf',
+            customMetadata: {
+              originalName: file.name,
+              uploadedBy: firebaseUid,
+              uploadedAt: new Date().toISOString(),
+            },
+          });
+
           resumeUrl = await getDownloadURL(uploadSnapshot.ref);
-        } catch (uploadErr: any) {
-          console.warn('Resume upload notice:', uploadErr?.message);
+        } catch (storageErr: any) {
+          console.error('Firebase Storage upload error:', storageErr);
+          // Roll back Auth user on failure
+          if (createdAuthUser) {
+            await createdAuthUser.delete().catch(() => {});
+          }
+          const storageErrorMsg = formatFirebaseError(
+            storageErr,
+            'Failed to upload resume to Firebase Storage. Please ensure Firebase Storage is enabled in the Firebase Console.'
+          );
+          throw new Error(storageErrorMsg);
         }
       } else if (typeof data.resumeUrl === 'string' && data.resumeUrl && !data.resumeUrl.includes('storage.ilmp.edu')) {
         resumeUrl = data.resumeUrl;
       }
 
-      // 3. Format skills
+      // 4. Format skills
       const skills = Array.isArray(data.skills)
         ? data.skills.map((skill: any) => String(skill).trim()).filter(Boolean)
         : typeof data.skills === 'string'
         ? data.skills.split(',').map((skill: string) => skill.trim()).filter(Boolean)
         : [];
 
-      // 4. Document Payloads
+      // 5. Document Payloads with strict Firebase UID as primary key
       const userDocData = {
         uid: firebaseUid,
-        email: firebaseUser.email || email,
+        email: createdAuthUser.email || email,
         name: fullName,
         role: 'STUDENT',
         status: 'ACTIVE',
@@ -534,7 +505,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const studentDocData = {
         uid: firebaseUid,
         name: fullName,
-        email: firebaseUser.email || email,
+        email: createdAuthUser.email || email,
         rollNumber: rollNumber,
         branch: branch,
         year: Number(data.year) || 3,
@@ -557,11 +528,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: serverTimestamp(),
       };
 
-      // 5. Firestore Write with Local Backup
-      await safeFirestoreSet(doc(db, 'users', firebaseUid), userDocData);
-      await safeFirestoreSet(doc(db, 'students', firebaseUid), studentDocData);
+      // 6. Firestore: Create users/{UID} and students/{UID} documents
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'users', firebaseUid), userDocData),
+          setDoc(doc(db, 'students', firebaseUid), studentDocData),
+        ]);
+      } catch (firestoreErr: any) {
+        console.error('Firestore write failure during student registration:', firestoreErr);
+        // Roll back Auth user on Firestore failure to prevent orphaned accounts
+        if (createdAuthUser) {
+          await createdAuthUser.delete().catch((delErr) => {
+            console.warn('Could not roll back Auth user on Firestore failure:', delErr);
+          });
+        }
+        const friendlyFirestoreMsg = formatFirebaseError(
+          firestoreErr,
+          'Failed to create student profile in Firestore database.'
+        );
+        throw new Error(friendlyFirestoreMsg);
+      }
 
-      // Synchronize with API backend asynchronously
+      // Synchronize with API backend asynchronously if available
       api.registerStudent({ ...data, rollNumber, branch, firebaseUid, resumeUrl }).catch(() => {});
 
       const appUser = {
@@ -572,17 +560,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         student: studentDocData,
       };
 
-      saveLocalProfile(firebaseUid, appUser);
       setUser(appUser);
       setActiveRole('student');
 
-      const token = await firebaseUser.getIdToken().catch(() => null);
+      const token = await createdAuthUser.getIdToken().catch(() => null);
       if (token) setAuthToken(token);
 
       toast.success('Student account registered and authenticated successfully!');
       return { uid: firebaseUid, user: appUser };
     } catch (err: any) {
-      const msg = formatFirebaseError(err, 'Student registration failed');
+      const msg = formatFirebaseError(err, err.message || 'Student registration failed');
       toast.error(msg);
       throw new Error(msg);
     } finally {
@@ -593,7 +580,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ─── REAL FACULTY REGISTRATION (Firebase Auth + Firestore) ─────────────────
   const registerFaculty = useCallback(async (data: any) => {
     setLoading(true);
-    let firebaseUser: FirebaseUser | null = null;
+    let createdAuthUser: FirebaseUser | null = null;
     try {
       const email = (data.email || '').trim().toLowerCase();
       const password = data.password;
@@ -617,34 +604,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(msg);
       }
 
-      // 1. Firebase Authentication account creation with automatic recovery
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        firebaseUser = userCredential.user;
-      } catch (authErr: any) {
-        if (authErr?.code === 'auth/email-already-in-use') {
-          try {
-            const loginCred = await signInWithEmailAndPassword(auth, email, password);
-            firebaseUser = loginCred.user;
-            toast.info('Existing account detected. Updating profile...');
-          } catch (signInErr: any) {
-            const duplicateMsg = 'An account with this email address already exists. Please sign in with your password, or use Reset Password.';
-            toast.error(duplicateMsg);
-            throw new Error(duplicateMsg);
-          }
-        } else {
-          throw authErr;
-        }
-      }
-
-      if (!firebaseUser) {
-        throw new Error('Authentication user could not be established.');
-      }
-
-      const firebaseUid = firebaseUser.uid;
+      // 1. Firebase Authentication: Create user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      createdAuthUser = userCredential.user;
+      const firebaseUid = createdAuthUser.uid;
 
       if (fullName) {
-        await updateProfile(firebaseUser, { displayName: fullName }).catch(() => {});
+        await updateProfile(createdAuthUser, { displayName: fullName }).catch(() => {});
       }
 
       // 2. Document Payloads
@@ -679,11 +645,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: serverTimestamp(),
       };
 
-      // 3. Firestore Creation with Local Backup
-      await safeFirestoreSet(doc(db, 'users', firebaseUid), userDocData);
-      await safeFirestoreSet(doc(db, 'faculty', firebaseUid), facultyDocData);
+      // 3. Firestore: Create users/{UID} and faculty/{UID}
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'users', firebaseUid), userDocData),
+          setDoc(doc(db, 'faculty', firebaseUid), facultyDocData),
+        ]);
+      } catch (firestoreErr: any) {
+        console.error('Firestore write failure during faculty registration:', firestoreErr);
+        if (createdAuthUser) {
+          await createdAuthUser.delete().catch(() => {});
+        }
+        const friendlyFirestoreMsg = formatFirebaseError(
+          firestoreErr,
+          'Failed to create faculty profile in Firestore database.'
+        );
+        throw new Error(friendlyFirestoreMsg);
+      }
 
-      // Synchronize with API backend asynchronously
       api.registerFaculty({ ...data, firebaseUid }).catch(() => {});
 
       const appUser = {
@@ -694,17 +673,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         faculty: facultyDocData,
       };
 
-      saveLocalProfile(firebaseUid, appUser);
       setUser(appUser);
       setActiveRole('faculty');
 
-      const token = await firebaseUser.getIdToken().catch(() => null);
+      const token = await createdAuthUser.getIdToken().catch(() => null);
       if (token) setAuthToken(token);
 
       toast.info('Faculty registration submitted. Pending administrative approval.');
       return { uid: firebaseUid, user: appUser };
     } catch (err: any) {
-      const msg = formatFirebaseError(err, 'Faculty registration failed');
+      const msg = formatFirebaseError(err, err.message || 'Faculty registration failed');
       toast.error(msg);
       throw new Error(msg);
     } finally {
@@ -715,7 +693,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ─── REAL COMPANY REGISTRATION (Firebase Auth + Firestore) ─────────────────
   const registerCompany = useCallback(async (data: any) => {
     setLoading(true);
-    let firebaseUser: FirebaseUser | null = null;
+    let createdAuthUser: FirebaseUser | null = null;
     try {
       const email = (data.contactEmail || data.email || '').trim().toLowerCase();
       const password = data.password;
@@ -740,34 +718,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(msg);
       }
 
-      // 1. Firebase Authentication account creation with automatic recovery
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        firebaseUser = userCredential.user;
-      } catch (authErr: any) {
-        if (authErr?.code === 'auth/email-already-in-use') {
-          try {
-            const loginCred = await signInWithEmailAndPassword(auth, email, password);
-            firebaseUser = loginCred.user;
-            toast.info('Existing company account detected. Updating profile...');
-          } catch (signInErr: any) {
-            const duplicateMsg = 'An account with this email address already exists. Please sign in with your password, or use Reset Password.';
-            toast.error(duplicateMsg);
-            throw new Error(duplicateMsg);
-          }
-        } else {
-          throw authErr;
-        }
-      }
-
-      if (!firebaseUser) {
-        throw new Error('Authentication user could not be established.');
-      }
-
-      const firebaseUid = firebaseUser.uid;
+      // 1. Firebase Authentication: Create user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      createdAuthUser = userCredential.user;
+      const firebaseUid = createdAuthUser.uid;
 
       if (contactPerson || companyName) {
-        await updateProfile(firebaseUser, { displayName: contactPerson || companyName }).catch(() => {});
+        await updateProfile(createdAuthUser, { displayName: contactPerson || companyName }).catch(() => {});
       }
 
       // 2. Document Payloads
@@ -803,11 +760,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: serverTimestamp(),
       };
 
-      // 3. Firestore Creation with Local Backup
-      await safeFirestoreSet(doc(db, 'users', firebaseUid), userDocData);
-      await safeFirestoreSet(doc(db, 'companies', firebaseUid), companyDocData);
+      // 3. Firestore: Create users/{UID} and companies/{UID}
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'users', firebaseUid), userDocData),
+          setDoc(doc(db, 'companies', firebaseUid), companyDocData),
+        ]);
+      } catch (firestoreErr: any) {
+        console.error('Firestore write failure during company registration:', firestoreErr);
+        if (createdAuthUser) {
+          await createdAuthUser.delete().catch(() => {});
+        }
+        const friendlyFirestoreMsg = formatFirebaseError(
+          firestoreErr,
+          'Failed to create company profile in Firestore database.'
+        );
+        throw new Error(friendlyFirestoreMsg);
+      }
 
-      // Synchronize with API backend asynchronously
       api.registerCompany({ ...data, firebaseUid }).catch(() => {});
 
       const appUser = {
@@ -818,17 +788,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         company: companyDocData,
       };
 
-      saveLocalProfile(firebaseUid, appUser);
       setUser(appUser);
       setActiveRole('company');
 
-      const token = await firebaseUser.getIdToken().catch(() => null);
+      const token = await createdAuthUser.getIdToken().catch(() => null);
       if (token) setAuthToken(token);
 
       toast.info('Company registration submitted. Pending institutional verification.');
       return { uid: firebaseUid, user: appUser };
     } catch (err: any) {
-      const msg = formatFirebaseError(err, 'Company registration failed');
+      const msg = formatFirebaseError(err, err.message || 'Company registration failed');
       toast.error(msg);
       throw new Error(msg);
     } finally {
@@ -839,7 +808,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ─── REAL ADMIN REGISTRATION (Firebase Auth + Firestore) ─────────────────
   const registerAdmin = useCallback(async (data: any) => {
     setLoading(true);
-    let firebaseUser: FirebaseUser | null = null;
+    let createdAuthUser: FirebaseUser | null = null;
     try {
       const email = (data.email || '').trim().toLowerCase();
       const password = data.password;
@@ -866,34 +835,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(msg);
       }
 
-      // 1. Firebase Authentication account creation with automatic recovery
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        firebaseUser = userCredential.user;
-      } catch (authErr: any) {
-        if (authErr?.code === 'auth/email-already-in-use') {
-          try {
-            const loginCred = await signInWithEmailAndPassword(auth, email, password);
-            firebaseUser = loginCred.user;
-            toast.info('Existing administrator account detected. Updating profile...');
-          } catch (signInErr: any) {
-            const duplicateMsg = 'An account with this email address already exists. Please sign in with your password, or use Reset Password.';
-            toast.error(duplicateMsg);
-            throw new Error(duplicateMsg);
-          }
-        } else {
-          throw authErr;
-        }
-      }
-
-      if (!firebaseUser) {
-        throw new Error('Authentication user could not be established.');
-      }
-
-      const firebaseUid = firebaseUser.uid;
+      // 1. Firebase Authentication: Create user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      createdAuthUser = userCredential.user;
+      const firebaseUid = createdAuthUser.uid;
 
       if (fullName) {
-        await updateProfile(firebaseUser, { displayName: fullName }).catch(() => {});
+        await updateProfile(createdAuthUser, { displayName: fullName }).catch(() => {});
       }
 
       // 2. Document Payloads
@@ -929,11 +877,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatedAt: serverTimestamp(),
       };
 
-      // 3. Firestore Creation with Local Backup
-      await safeFirestoreSet(doc(db, 'users', firebaseUid), userDocData);
-      await safeFirestoreSet(doc(db, 'admins', firebaseUid), adminDocData);
+      // 3. Firestore: Create users/{UID} and admins/{UID}
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'users', firebaseUid), userDocData),
+          setDoc(doc(db, 'admins', firebaseUid), adminDocData),
+        ]);
+      } catch (firestoreErr: any) {
+        console.error('Firestore write failure during admin registration:', firestoreErr);
+        if (createdAuthUser) {
+          await createdAuthUser.delete().catch(() => {});
+        }
+        const friendlyFirestoreMsg = formatFirebaseError(
+          firestoreErr,
+          'Failed to create admin profile in Firestore database.'
+        );
+        throw new Error(friendlyFirestoreMsg);
+      }
 
-      // Synchronize with API backend asynchronously
       api.createAdmin({ ...data, firebaseUid }).catch(() => {});
 
       const appUser = {
@@ -944,17 +905,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         admin: adminDocData,
       };
 
-      saveLocalProfile(firebaseUid, appUser);
       setUser(appUser);
       setActiveRole('admin');
 
-      const token = await firebaseUser.getIdToken().catch(() => null);
+      const token = await createdAuthUser.getIdToken().catch(() => null);
       if (token) setAuthToken(token);
 
       toast.success(`Administrator account created successfully for ${fullName}!`);
       return { uid: firebaseUid, user: appUser };
     } catch (err: any) {
-      const msg = formatFirebaseError(err, 'Administrator registration failed');
+      const msg = formatFirebaseError(err, err.message || 'Administrator registration failed');
       toast.error(msg);
       throw new Error(msg);
     } finally {
@@ -980,7 +940,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ─── REFRESH USER IDENTITY FROM FIRESTORE / LOCAL PROFILE ──────────────────
+  // ─── REFRESH USER IDENTITY FROM FIRESTORE ──────────────────────────────────
   const refreshUser = useCallback(async () => {
     const currentUser = auth.currentUser;
     if (currentUser) {
