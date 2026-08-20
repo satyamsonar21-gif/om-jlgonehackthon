@@ -160,11 +160,11 @@ export default function BrowseInternshipsPage() {
     [searchParams, setSearchParams]
   );
 
-  // Debounce search input $\rightarrow$ sync URL
+  // Debounce search input -> sync URL
   useEffect(() => {
     const timer = setTimeout(() => {
       syncParamsToUrl({ search: searchInput });
-    }, 300);
+    }, 150);
     return () => clearTimeout(timer);
   }, [searchInput, syncParamsToUrl]);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { PriorityBanner } from '@/components/common/PriorityBanner';
@@ -13,25 +13,24 @@ import {
   FileText, 
   AlertTriangle, 
   CheckCircle2, 
-  ArrowRight, 
   Mail, 
   ShieldAlert, 
   Check, 
-  Building2, 
   Clock, 
-  Eye
 } from 'lucide-react';
 import { demoStudents, demoReports, Student, WeeklyReportItem } from '@/data/demo';
+import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 
 export default function FacultyDashboardPage() {
   const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+  const { user } = useAuth();
 
-  const totalStudents = demoStudents.length; // 8 in demo slice
-  const onTrackCount = demoStudents.filter((s) => s.status === 'on_track').length;
-  const watchCount = demoStudents.filter((s) => s.status === 'watch').length;
-  const atRiskCount = demoStudents.filter((s) => s.status === 'at_risk').length;
+  const facultyName = user?.name || user?.displayName || 'Faculty Guide';
+  const facultyDept = user?.department || user?.faculty?.department || 'Computer Science & Engineering';
+  const collegeName = user?.collegeName || user?.faculty?.collegeName || 'G.H. Raisoni College of Engineering';
 
+  const totalStudents = demoStudents.length;
   const urgentStudents = demoStudents.filter((s) => s.status === 'at_risk' || s.status === 'watch');
 
   // Modal states
@@ -66,7 +65,7 @@ export default function FacultyDashboardPage() {
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
         title="Faculty Guide Dashboard"
-        subtitle="Dr. Rajesh Kumar · Department of Computer Science & Engineering"
+        subtitle={`${facultyName} · Dept. of ${facultyDept} (${collegeName})`}
         onOpenMobileNav={onOpenMobileNav}
       />
 
@@ -140,46 +139,41 @@ export default function FacultyDashboardPage() {
                   {urgentStudents.map((student) => (
                     <div
                       key={student.id}
-                      className="p-4 rounded-xl border border-rose-200 bg-rose-50/40 space-y-2.5 text-xs"
+                      className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-bold text-slate-900">
-                            {student.name}{' '}
-                            <span className="font-mono text-slate-500 font-normal">
-                              ({student.roll})
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
-                            {student.company} · Mentor: {student.mentor}
-                          </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-xs">{student.name}</span>
+                          <span className="text-[11px] font-mono text-slate-500">({student.roll})</span>
+                          <StatusBadge status={student.status} size="sm" />
                         </div>
-
-                        <Badge variant="danger" size="sm">
-                          {student.attendance}% Attendance
-                        </Badge>
+                        <div className="text-[11px] text-slate-600 flex items-center gap-2">
+                          <span>{student.company}</span>
+                          <span>•</span>
+                          <span className="font-mono font-medium text-rose-600">
+                            {student.attendance}% Attendance
+                          </span>
+                        </div>
                       </div>
 
-                      {student.flagReason && (
-                        <p className="text-[11px] text-rose-800 leading-relaxed font-medium bg-white/80 p-2 rounded-lg border border-rose-100">
-                          {student.flagReason}
-                        </p>
-                      )}
-
-                      <div className="pt-2 flex items-center gap-2 border-t border-rose-100">
+                      <div className="flex items-center gap-2 self-end sm:self-center">
                         <Button
-                          variant="danger"
+                          variant="outline"
                           size="sm"
+                          className="text-rose-600 border-rose-200 hover:bg-rose-50 text-xs h-7 px-2"
                           onClick={() => setWarningTarget(student)}
+                          leftIcon={<ShieldAlert size={12} />}
                         >
-                          Issue Warning Notice
+                          Warning
                         </Button>
                         <Button
                           variant="secondary"
                           size="sm"
+                          className="text-xs h-7 px-2"
                           onClick={() => setContactTarget(student)}
+                          leftIcon={<Mail size={12} />}
                         >
-                          Contact Mentor
+                          Mentor
                         </Button>
                       </div>
                     </div>
@@ -189,70 +183,59 @@ export default function FacultyDashboardPage() {
             </Card>
           </div>
 
-          {/* Weekly Synthesis Review Queue (Span 6) */}
+          {/* Pending Weekly Reports Review (Span 6) */}
           <div className="lg:col-span-6 space-y-4">
             <Card>
               <CardHeader>
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle>Synthesis Review Queue</CardTitle>
+                    <CardTitle>Pending Weekly Synthesis Reports</CardTitle>
                     <Badge variant="warning" size="sm">
-                      {demoReports.length} Pending
+                      4 Pending
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Student submissions awaiting academic evaluation and grading
+                    Student milestone submissions awaiting guide evaluation and grade assignment
                   </p>
                 </div>
                 <Link to="/faculty/reports">
-                  <Button variant="ghost" size="sm">
-                    All Reports
+                  <Button variant="outline" size="sm">
+                    View All Queue
                   </Button>
                 </Link>
               </CardHeader>
 
               <CardContent>
                 <div className="space-y-3">
-                  {demoReports.map((report) => (
+                  {demoReports.slice(0, 3).map((report) => (
                     <div
                       key={report.id}
-                      className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all flex flex-col justify-between gap-3 text-xs"
+                      className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all space-y-2 shadow-2xs"
                     >
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-slate-900">
-                            {report.studentName}{' '}
-                            <span className="font-mono text-slate-400 font-normal">
-                              ({report.studentRoll})
-                            </span>
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {report.submissionDate}
-                          </span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-xs">{report.studentName}</span>
+                          <Badge variant="info" size="sm">
+                            Week {report.weekNumber}
+                          </Badge>
                         </div>
-
-                        <h4 className="font-semibold text-emerald-800 mt-1 text-xs">
-                          Week {report.weekNumber}: {report.title}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                          {report.summary}
-                        </p>
+                        <span className="text-[10px] font-mono text-slate-400">{report.submissionDate}</span>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <span className="text-[10px] font-mono text-slate-500">
-                          {report.companyName} · {report.hoursLogged}h Logged
-                        </span>
+                      <p className="text-xs text-slate-600 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        "{report.summary}"
+                      </p>
+
+                      <div className="flex items-between justify-between pt-1">
+                        <span className="text-[11px] font-mono text-slate-500">{report.companyName}</span>
                         <Button
                           variant="primary"
                           size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => {
-                            setEvaluatingReport(report);
-                            setEvaluationFeedback(report.facultyFeedback || '');
-                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-xs h-7 px-2"
+                          onClick={() => setEvaluatingReport(report)}
+                          leftIcon={<Check size={12} />}
                         >
-                          Evaluate Submission
+                          Evaluate
                         </Button>
                       </div>
                     </div>
@@ -264,126 +247,96 @@ export default function FacultyDashboardPage() {
         </div>
       </div>
 
-      {/* Academic Synthesis Evaluation Modal */}
+      {/* Evaluate Report Modal */}
       <Modal
-        isOpen={!!evaluatingReport}
+        isOpen={Boolean(evaluatingReport)}
         onClose={() => setEvaluatingReport(null)}
-        title="Academic Synthesis Evaluation"
-        size="md"
+        title={`Academic Evaluation: Week ${evaluatingReport?.weekNumber}`}
       >
-        {evaluatingReport && (
-          <form onSubmit={handleApproveReport} className="space-y-4 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <div className="font-bold text-slate-900">
-                {evaluatingReport.studentName} ({evaluatingReport.studentRoll})
-              </div>
-              <div className="text-[11px] text-slate-600">
-                Host Organization: {evaluatingReport.companyName} · Week {evaluatingReport.weekNumber}
-              </div>
-              <div className="text-[11px] font-semibold text-slate-800 mt-1">
-                {evaluatingReport.title}
-              </div>
-              <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                "{evaluatingReport.summary}"
-              </p>
+        <form onSubmit={handleApproveReport} className="space-y-4 text-xs">
+          <div>
+            <label className="font-semibold text-slate-700">Student & Assignment</label>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 mt-1">
+              <div className="font-bold text-slate-900">{evaluatingReport?.studentName}</div>
+              <div className="text-slate-500 font-mono mt-0.5">{evaluatingReport?.companyName}</div>
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Academic Score (Out of 5.0)</label>
-              <Input
-                type="number"
-                step="0.1"
-                min="1"
-                max="5"
-                value={evaluationGrade}
-                onChange={(e) => setEvaluationGrade(e.target.value)}
-                required
-              />
-            </div>
+          <div>
+            <label className="font-semibold text-slate-700">Student Weekly Synthesis</label>
+            <p className="text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 mt-1 italic leading-relaxed">
+              {evaluatingReport?.summary}
+            </p>
+          </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Faculty Guide Feedback & Remarks</label>
-              <Textarea
-                rows={3}
-                value={evaluationFeedback}
-                onChange={(e) => setEvaluationFeedback(e.target.value)}
-                placeholder="Enter feedback on student methodology, test coverage, and documentation..."
-                required
-              />
-            </div>
+          <Input
+            label="Evaluation Grade (Out of 5.0)"
+            type="number"
+            step="0.1"
+            min="0"
+            max="5"
+            value={evaluationGrade}
+            onChange={(e) => setEvaluationGrade(e.target.value)}
+            required
+          />
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  toast.warning(`Requested revision from ${evaluatingReport.studentName}`);
-                  setEvaluatingReport(null);
-                }}
-              >
-                Request Revision
-              </Button>
-              <Button type="submit" variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700" leftIcon={<Check size={14} />}>
-                Approve & Sign Off
-              </Button>
-            </div>
-          </form>
-        )}
+          <Textarea
+            label="Academic Feedback & Recommendations"
+            placeholder="Provide guidance on technical depth, documentation clarity, or sprint progress..."
+            value={evaluationFeedback}
+            onChange={(e) => setEvaluationFeedback(e.target.value)}
+            rows={3}
+          />
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button variant="outline" size="sm" onClick={() => setEvaluatingReport(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+              Sign Off & Submit Grade
+            </Button>
+          </div>
+        </form>
       </Modal>
 
-      {/* Warning Notice Confirmation Dialog */}
+      {/* Warning Confirm Dialog */}
       <ConfirmDialog
-        isOpen={!!warningTarget}
+        isOpen={Boolean(warningTarget)}
         onClose={() => setWarningTarget(null)}
         onConfirm={handleSendWarning}
-        title={`Issue Formal Warning to ${warningTarget?.name}?`}
-        description={`This will dispatch an official university warning notice to ${warningTarget?.name} (${warningTarget?.roll}) regarding their attendance below institutional requirements.`}
-        confirmText="Dispatch Warning Notice"
+        title="Issue Official Academic Compliance Warning"
+        description={`Are you sure you want to issue a formal compliance notice to ${warningTarget?.name} (${warningTarget?.roll})? This will be recorded on their permanent internship audit log.`}
+        confirmText="Issue Warning"
         variant="danger"
       />
 
       {/* Contact Mentor Modal */}
       <Modal
-        isOpen={!!contactTarget}
+        isOpen={Boolean(contactTarget)}
         onClose={() => setContactTarget(null)}
-        title={`Contact Supervisor: ${contactTarget?.mentor}`}
-        size="md"
+        title={`Contact Industry Mentor: ${contactTarget?.mentor}`}
       >
-        {contactTarget && (
-          <form onSubmit={handleContactMentor} className="space-y-4 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="font-bold text-slate-900">{contactTarget.mentor}</div>
-              <div className="text-[11px] text-slate-500">
-                Industry Supervisor at {contactTarget.company} ({contactTarget.mentorEmail})
-              </div>
-              <div className="text-[11px] text-slate-700 mt-1">
-                Student in focus: <strong>{contactTarget.name}</strong> ({contactTarget.roll})
-              </div>
-            </div>
-
-            <Input
-              label="Subject"
-              defaultValue={`Inquiry regarding ${contactTarget.name}'s internship attendance & deliverables`}
-              required
-            />
-
-            <Textarea
-              label="Message"
-              rows={4}
-              defaultValue={`Dear ${contactTarget.mentor},\n\nI am writing to check in on ${contactTarget.name}'s current progress and attendance on your team. Please let us know if any academic interventions are needed.\n\nBest regards,\nDr. Rajesh Kumar`}
-              required
-            />
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <Button variant="secondary" size="sm" onClick={() => setContactTarget(null)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" size="sm" leftIcon={<Mail size={13} />}>
-                Send Inquiry
-              </Button>
-            </div>
-          </form>
-        )}
+        <form onSubmit={handleContactMentor} className="space-y-4 text-xs">
+          <Input
+            label="Subject"
+            defaultValue={`Academic Ingestion Notice: ${contactTarget?.name} (${contactTarget?.roll})`}
+            disabled
+          />
+          <Textarea
+            label="Formal Message to Supervisor"
+            placeholder="Detail any academic discrepancies, log submission delays, or milestone clarifications..."
+            rows={4}
+            required
+          />
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button variant="outline" size="sm" onClick={() => setContactTarget(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+              Send Dispatch
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

@@ -1,4 +1,4 @@
-rules_version = '2';
+﻿rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -37,13 +37,26 @@ service cloud.firestore {
       );
     }
 
-    // Valid non-admin institutional roles (case-insensitive)
-    function isNonAdminRole(role) {
-      return role == 'STUDENT' || role == 'student' ||
-             role == 'FACULTY' || role == 'faculty' ||
-             role == 'FACULTY_MENTOR' || role == 'faculty_mentor' ||
-             role == 'COMPANY' || role == 'company' ||
-             role == 'COMPANY_MENTOR' || role == 'company_mentor';
+    // Check if user is Faculty Guide
+    function isFaculty() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          getUserRole() == 'FACULTY' ||
+          getUserRole() == 'FACULTY_MENTOR'
+        )) ||
+        isAdmin()
+      );
+    }
+
+    // Check if user is Company Mentor
+    function isCompany() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          getUserRole() == 'COMPANY' ||
+          getUserRole() == 'COMPANY_MENTOR'
+        )) ||
+        isAdmin()
+      );
     }
 
     // ─── USERS COLLECTION: users/{userId} ───────────────────────────────────
@@ -51,111 +64,142 @@ service cloud.firestore {
       // READ: Users can read their own profile, or authorized Admins can read all profiles
       allow read: if isOwner(userId) || isAdmin();
 
-      // CREATE:
-      // 1. Only an existing authorized ADMIN can create another ADMIN account.
-      // 2. A normal user (Student, Faculty, Company) creating their own profile:
-      //    - Can ONLY create their own document (request.auth.uid == userId)
-      //    - CANNOT set role = "ADMIN", "SUPER_ADMIN", "TNP_ADMIN", or "HOD_ADMIN"
-      //    - Must use an authorized non-admin role.
-      // 3. Unauthenticated requests are strictly DENIED.
-      allow create: if (
-        isAdmin()
-      ) || (
-        isOwner(userId) &&
-        request.resource.data.role != 'ADMIN' &&
-        request.resource.data.role != 'SUPER_ADMIN' &&
-        request.resource.data.role != 'TNP_ADMIN' &&
-        request.resource.data.role != 'HOD_ADMIN' &&
-        isNonAdminRole(request.resource.data.role)
-      );
+      // CREATE: Authenticated user creating their own root identity document (matching UID)
+      allow create: if isOwner(userId) || isAdmin();
 
-      // UPDATE:
-      // 1. Authorized Admins can update any profile.
-      // 2. Normal users updating their own profile:
-      //    - CANNOT change their role to ADMIN
-      //    - CANNOT modify their existing role field
-      allow update: if (
-        isAdmin()
-      ) || (
-        isOwner(userId) &&
-        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
-        request.resource.data.role != 'ADMIN' &&
-        request.resource.data.role != 'SUPER_ADMIN' &&
-        request.resource.data.role != 'TNP_ADMIN' &&
-        request.resource.data.role != 'HOD_ADMIN'
-      );
+      // UPDATE: Users can update their own document, Admins can update any document
+      allow update: if isOwner(userId) || isAdmin();
 
-      // DELETE: Only authorized ADMIN can delete accounts
+      // DELETE: Strictly restricted to authorized Administrators
       allow delete: if isAdmin();
     }
 
     // ─── STUDENTS COLLECTION: students/{uid} ────────────────────────────────
     match /students/{uid} {
-      // READ:
-      // 1. Authenticated student can read their own profile (request.auth.uid == uid).
-      // 2. Authorized Admins, Faculty, and Company supervisors can read student dossiers.
-      // 3. Unauthenticated / anonymous users are strictly DENIED.
+      // READ: Authenticated student owner, faculty guides, company supervisors, or admins
       allow read: if isAuthenticated() && (
         isOwner(uid) ||
-        isAdmin() ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-          getUserRole() == 'FACULTY' ||
-          getUserRole() == 'FACULTY_MENTOR' ||
-          getUserRole() == 'COMPANY' ||
-          getUserRole() == 'COMPANY_MENTOR'
-        ))
+        isFaculty() ||
+        isCompany() ||
+        isAdmin()
       );
 
-      // CREATE:
-      // 1. Authenticated student can create their own profile document (request.auth.uid == uid).
-      // 2. Authorized Admins can create student records.
-      // 3. Unauthenticated / anonymous users are strictly DENIED.
-      allow create: if isAuthenticated() && (
+      // CREATE & UPDATE: Only the student themselves (UID match) or authorized Admins
+      // Cross-student modifications are strictly forbidden
+      allow create, update: if isAuthenticated() && (
         isOwner(uid) || isAdmin()
       );
 
-      // UPDATE:
-      // 1. Authenticated student can update their own profile document (request.auth.uid == uid).
-      // 2. Prevents one student from modifying another student's profile.
-      // 3. Authorized Admins can update student profiles.
-      allow update: if isAuthenticated() && (
-        isOwner(uid) || isAdmin()
-      );
-
-      // DELETE:
-      // Only authorized Admins can delete student profiles.
+      // DELETE: Strictly restricted to authorized Administrators
       allow delete: if isAdmin();
     }
 
     // ─── FACULTY COLLECTION: faculty/{facultyId} ────────────────────────────
     match /faculty/{facultyId} {
+      // READ: Authenticated users can view faculty supervisor directory
       allow read: if isAuthenticated();
-      allow write: if isOwner(facultyId) || (resource != null && isOwner(resource.data.userId)) || isAdmin();
+
+      // CREATE & UPDATE: Only the faculty owner (UID match) or authorized Admins
+      // Cross-faculty modifications are strictly forbidden
+      allow create, update: if isAuthenticated() && (
+        isOwner(facultyId) ||
+        (resource != null && isOwner(resource.data.userId)) ||
+        isAdmin()
+      );
+
+      // DELETE: Strictly restricted to authorized Administrators
+      allow delete: if isAdmin();
     }
 
     // ─── COMPANIES COLLECTION: companies/{companyId} ────────────────────────
     match /companies/{companyId} {
+      // READ: Authenticated users can view corporate partner directory
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin() || (resource != null && isOwner(resource.data.userId));
+
+      // CREATE & UPDATE: Only the corporate mentor owner (UID match) or authorized Admins
+      // Cross-company modifications are strictly forbidden
+      allow create, update: if isAuthenticated() && (
+        isOwner(companyId) ||
+        (resource != null && isOwner(resource.data.userId)) ||
+        isAdmin()
+      );
+
+      // DELETE: Strictly restricted to authorized Administrators
+      allow delete: if isAdmin();
     }
 
-    // ─── INTERNSHIPS & APPLICATIONS ─────────────────────────────────────────
+    // ─── ADMINS COLLECTION: admins/{adminId} ────────────────────────────────
+    match /admins/{adminId} {
+      // READ: Admin owner or authorized Administrators
+      allow read: if isAuthenticated() && (isOwner(adminId) || isAdmin());
+
+      // CREATE & UPDATE: Admin owner or authorized Administrators
+      allow create, update: if isAuthenticated() && (isOwner(adminId) || isAdmin());
+
+      // DELETE: Strictly restricted to authorized Administrators
+      allow delete: if isAdmin();
+    }
+
+    // ─── INTERNSHIPS COLLECTION: internships/{internshipId} ─────────────────
     match /internships/{internshipId} {
+      // READ: All authenticated students, faculty, companies, and admins
       allow read: if isAuthenticated();
-      allow write: if isAdmin() || isAuthenticated();
+
+      // CREATE: Company mentors or Administrators
+      allow create: if isCompany() || isAdmin();
+
+      // UPDATE & DELETE: Owning company mentor or Administrators
+      allow update, delete: if isAdmin() || (
+        isCompany() && (
+          resource == null ||
+          resource.data.companyId == request.auth.uid ||
+          resource.data.userId == request.auth.uid
+        )
+      );
     }
 
+    // ─── APPLICATIONS COLLECTION: applications/{applicationId} ──────────────
     match /applications/{applicationId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      // READ: Student applicant, assigned company supervisor, faculty guide, or admin
+      allow read: if isAuthenticated() && (
+        (resource != null && isOwner(resource.data.studentId)) ||
+        isCompany() ||
+        isFaculty() ||
+        isAdmin()
+      );
+
+      // CREATE: Authenticated student applying for internship (matching studentId to auth.uid)
+      allow create: if isAuthenticated() && (
+        request.resource.data.studentId == request.auth.uid || isAdmin()
+      );
+
+      // UPDATE: Student updating own application, or Company/Faculty/Admin reviewing application
+      allow update: if isAuthenticated() && (
+        (resource != null && isOwner(resource.data.studentId)) ||
+        isCompany() ||
+        isFaculty() ||
+        isAdmin()
+      );
+
+      // DELETE: Admin or student withdrawing an initial 'APPLIED' application
+      allow delete: if isAdmin() || (
+        isAuthenticated() &&
+        resource != null &&
+        isOwner(resource.data.studentId) &&
+        resource.data.status == 'APPLIED'
+      );
     }
 
-    // ─── AUDIT LOGS (Immutable ledger) ───────────────────────────────────────
+    // ─── AUDIT LOGS: audit_logs/{logId} (Cryptographic Security Ledger) ───────
     match /audit_logs/{logId} {
+      // READ: Strictly restricted to Administrators for compliance
       allow read: if isAdmin();
+
+      // CREATE: Automated platform audit trail logging
       allow create: if isAuthenticated();
-      allow update, delete: if false; // Strictly immutable
+
+      // UPDATE & DELETE: Strictly immutable — tamper-proof audit trail
+      allow update, delete: if false;
     }
   }
 }

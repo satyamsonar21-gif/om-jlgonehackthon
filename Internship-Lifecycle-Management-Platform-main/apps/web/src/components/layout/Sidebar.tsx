@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { 
   Home, 
@@ -46,12 +46,12 @@ interface SidebarProps {
   role: Role;
 }
 
-export function Sidebar({ role }: SidebarProps) {
+export const Sidebar = React.memo(function Sidebar({ role }: SidebarProps) {
   const location = useLocation();
   const pathname = location.pathname;
   const { isCollapsed, toggleSidebar } = useSidebar();
 
-  const getNavStructure = (): { roleTitle: string; roleSubtitle: string; icon: LucideIcon; sections: NavSection[] } => {
+  const { roleTitle, roleSubtitle, icon: RoleIcon, sections } = useMemo(() => {
     switch (role) {
       case 'STUDENT':
         return {
@@ -178,9 +178,7 @@ export function Sidebar({ role }: SidebarProps) {
           ],
         };
     }
-  };
-
-  const { roleTitle, roleSubtitle, icon: RoleIcon, sections } = getNavStructure();
+  }, [role]);
 
   return (
     <aside
@@ -298,6 +296,6 @@ export function Sidebar({ role }: SidebarProps) {
       </div>
     </aside>
   );
-}
+});
 
 export default Sidebar;

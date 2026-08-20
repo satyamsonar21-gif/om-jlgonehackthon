@@ -73,11 +73,16 @@ export function useUnreadNotificationCount() {
   return useQuery({
     queryKey: queryKeys.unreadCount,
     queryFn: async () => {
-      const res = await api.getUnreadNotificationCount();
-      return typeof res.data?.count === 'number' ? res.data.count : 0;
+      try {
+        const res = await api.getUnreadNotificationCount();
+        return typeof res.data?.count === 'number' ? res.data.count : 0;
+      } catch {
+        return 0;
+      }
     },
-    staleTime: 10 * 1000,
+    staleTime: 15 * 1000,
     refetchInterval: 30 * 1000, // Background heartbeat polling every 30s
+    retry: 0,
   });
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { PriorityBanner } from '@/components/common/PriorityBanner';
@@ -11,17 +11,17 @@ import {
   Briefcase, 
   FileText, 
   Star, 
-  Plus, 
-  ArrowRight, 
   ChevronRight, 
-  CheckCircle2, 
-  Clock, 
-  Eye
 } from 'lucide-react';
-import { demoStudents, demoInternships } from '@/data/demo';
+import { demoStudents } from '@/data/demo';
+import { useAuth } from '@/lib/auth';
 
 export default function CompanyDashboardPage() {
   const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+  const { user } = useAuth();
+
+  const companyName = user?.companyName || user?.company?.companyName || user?.name || 'Corporate Partner';
+  const domain = user?.domain || user?.company?.domain || 'Industry Mentorship & Innovation Partner';
 
   const activeInterns = demoStudents.slice(0, 6);
 
@@ -29,7 +29,7 @@ export default function CompanyDashboardPage() {
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
         title="Company Mentor Dashboard"
-        subtitle="TechCorp Solutions · Industry Supervisor & Mentorship Hub"
+        subtitle={`${companyName} · ${domain}`}
         onOpenMobileNav={onOpenMobileNav}
       />
 
@@ -105,41 +105,30 @@ export default function CompanyDashboardPage() {
                 {activeInterns.map((intern) => (
                   <div
                     key={intern.id}
-                    className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between space-y-3"
+                    className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all space-y-3 shadow-2xs"
                   >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="font-bold text-sm text-slate-900 leading-snug">
-                            {intern.name}
-                          </h4>
-                          <span className="text-xs text-indigo-700 font-semibold block mt-0.5">
-                            {intern.role}
-                          </span>
-                          <span className="text-[11px] font-mono text-slate-400 font-medium">
-                            {intern.roll} · {intern.dept.split('&')[0]}
-                          </span>
-                        </div>
-                        <StatusBadge status={intern.status === 'at_risk' ? 'AT_RISK' : 'ACTIVE'} size="sm" />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs">{intern.name}</div>
+                        <div className="text-[11px] font-mono text-slate-500">{intern.roll}</div>
                       </div>
-
-                      <div className="mt-3 space-y-1.5">
-                        <div className="flex justify-between text-[11px] font-mono text-slate-500">
-                          <span>Sprint Velocity (8/10 Tasks)</span>
-                          <span className="font-bold text-slate-700">80%</span>
-                        </div>
-                        <Progress value={80} size="sm" variant={intern.status === 'at_risk' ? 'danger' : 'primary'} />
-                      </div>
+                      <StatusBadge status={intern.status} size="sm" />
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
-                      <span className="text-slate-500">Last: {intern.lastLogDate}</span>
-                      <Link
-                        to={`/company/interns/${intern.id}`}
-                        className="font-bold text-indigo-700 hover:underline flex items-center gap-1"
-                      >
-                        <span>Evaluate</span>
-                        <ChevronRight size={12} />
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span>Milestone Progress</span>
+                        <span className="font-mono font-bold text-indigo-600">{intern.score}%</span>
+                      </div>
+                      <Progress value={intern.score} max={100} variant="primary" size="sm" />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+                      <span className="text-slate-500 font-mono">Advisor: {intern.facultyAdvisor}</span>
+                      <Link to={`/company/interns/${intern.id}`}>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" rightIcon={<ChevronRight size={12} />}>
+                          Dossier
+                        </Button>
                       </Link>
                     </div>
                   </div>

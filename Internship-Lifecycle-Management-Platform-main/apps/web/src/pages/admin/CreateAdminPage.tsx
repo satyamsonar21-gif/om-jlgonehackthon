@@ -24,9 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { auth, db } from '@/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '@/lib/auth';
 
 interface AdminFormData {
   fullName: string;
@@ -50,6 +48,7 @@ interface FormErrors {
 
 export default function CreateAdminPage() {
   const navigate = useNavigate();
+  const { registerAdmin } = useAuth();
 
   const [formData, setFormData] = useState<AdminFormData>({
     fullName: '',
@@ -302,84 +301,27 @@ export default function CreateAdminPage() {
     setIsSubmitting(true);
 
     try {
-      // Dispatch payload
-      const payload = {
-        name: formData.fullName.trim(),
+      const res = await registerAdmin({
+        ...formData,
         fullName: formData.fullName.trim(),
+        name: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
-        phone: formData.phone.trim() || undefined,
-        role: formData.role,
-        department: formData.department.trim(),
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-      };
-
-      // ─── 1. FIREBASE AUTHENTICATION: CREATE USER ACCOUNT ─────────────────────
-      let firebaseUid: string | null = null;
-      try {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          payload.email,
-          payload.password
-        );
-        firebaseUid = userCredential.user.uid;
-
-        // Set Firebase display name
-        await updateProfile(userCredential.user, {
-          displayName: payload.name,
-        });
-
-        // ─── 2. FIRESTORE: CREATE/UPDATE USERS/{UID} DOCUMENT WITH ROLE "ADMIN" ───
-        const userDocRef = doc(db, 'users', firebaseUid);
-        await setDoc(
-          userDocRef,
-          {
-            uid: firebaseUid,
-            email: payload.email,
-            name: payload.name,
-            displayName: payload.name,
-            role: 'ADMIN', // STRICT REQUIREMENT: role = "ADMIN"
-            roleTier: payload.role,
-            department: payload.department,
-            phone: payload.phone || '',
-            status: 'ACTIVE',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } catch (fbErr: any) {
-        console.warn('Firebase user creation notice:', fbErr?.code);
-        if (fbErr?.code === 'auth/email-already-in-use') {
-          throw new Error('An account with this email already exists.');
-        } else if (fbErr?.code === 'auth/weak-password') {
-          throw new Error('Password must be at least 8 characters long and contain both letters and numbers.');
-        } else if (fbErr?.code === 'auth/invalid-email') {
-          throw new Error('Please enter a valid email address.');
-        } else if (fbErr?.code === 'auth/network-request-failed') {
-          throw new Error('Network connection error. Please check your internet connection and try again.');
-        }
-      }
-
-      // ─── 3. BACKEND API: SYNCHRONIZE WITH INSTITUTIONAL DATABASE & AUDIT LOG ───
-      const response = await api.createAdmin({
-        ...payload,
-        firebaseUid: firebaseUid || undefined,
       });
-      const resData = response.data;
 
       setCreatedAdmin({
-        ...(resData.user || resData),
-        firebaseUid: firebaseUid || resData.user?.id || `adm_${Date.now()}`,
+        fullName: formData.fullName.trim(),
+        name: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim() || undefined,
+        firebaseUid: res.uid,
         role: 'ADMIN',
-        roleTier: payload.role,
+        roleTier: formData.role,
+        department: formData.department.trim(),
       });
       setIsSuccess(true);
-      toast.success(resData.message || `Administrator account provisioned for ${formData.fullName}!`);
     } catch (err: any) {
       const friendlyMessage = sanitizeErrorMessage(err);
       setServerError(friendlyMessage);
-      toast.error(friendlyMessage);
     } finally {
       setIsSubmitting(false);
     }

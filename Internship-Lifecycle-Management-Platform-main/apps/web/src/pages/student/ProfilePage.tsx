@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { uploadDocument, StoragePaths, validateDocumentFile } from '@/lib/storage';
@@ -224,7 +224,7 @@ export default function ProfilePage() {
   }, []);
 
   // ─── DYNAMIC PROFILE COMPLETION CALCULATOR ──────────────────────────────────
-  const calculateCompletion = () => {
+  const completion = useMemo(() => {
     let score = 0;
     const completed: string[] = [];
     const missing: string[] = [];
@@ -314,9 +314,27 @@ export default function ProfilePage() {
       completed,
       missing,
     };
-  };
-
-  const completion = calculateCompletion();
+  }, [
+    name,
+    email,
+    phone,
+    studentId,
+    department,
+    year,
+    semester,
+    cgpa,
+    passingYear,
+    techSkills,
+    softSkills,
+    resumeUrl,
+    projects,
+    certifications,
+    githubUrl,
+    linkedinUrl,
+    portfolioUrl,
+    preferredDomains,
+    preferredLocation,
+  ]);
 
   // Save profile handler
   const handleSave = async (e?: React.FormEvent) => {

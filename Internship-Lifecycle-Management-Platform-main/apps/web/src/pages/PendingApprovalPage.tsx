@@ -12,11 +12,14 @@ export default function PendingApprovalPage() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refreshUser();
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      await refreshUser();
       toast.info('Account review status checked. Still pending administrator verification.');
-    }, 600);
+    } catch {
+      toast.info('Account review status checked. Still pending administrator verification.');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const isFaculty = user?.role === 'FACULTY_MENTOR' || user?.role === 'FACULTY';

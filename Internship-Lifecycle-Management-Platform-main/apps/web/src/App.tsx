@@ -91,7 +91,16 @@ const queryClient = new QueryClient({
 });
 
 function SuspenseFallback() {
-  return <DashboardSkeleton />;
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-amber-600 animate-spin" />
+        <span className="text-xs font-mono text-slate-500 font-medium tracking-wide">
+          Loading portal...
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {

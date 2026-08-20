@@ -248,6 +248,8 @@ export default function AdminCertificatesPage() {
                 <img
                   src={previewCert.qrCode}
                   alt="QR Code"
+                  loading="lazy"
+                  decoding="async"
                   className="w-48 h-48 rounded-xl border border-slate-200 p-2 bg-white shadow-xs"
                 />
               )}

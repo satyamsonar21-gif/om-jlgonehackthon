@@ -1,31 +1,101 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { Shield, Mail, Phone, Lock, Save, Key } from 'lucide-react';
+import { Shield, Mail, Phone, Save, Building, Key } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth';
+import { db } from '@/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function AdminProfilePage() {
   const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav: () => void }>() || {};
+  const { user, refreshUser } = useAuth();
 
-  const [name, setName] = useState('Super Administrator');
-  const [email, setEmail] = useState('admin.root@institution.edu');
-  const [phone, setPhone] = useState('+91 80 2299 0001');
+  const [name, setName] = useState(user?.name || user?.displayName || 'Administrator');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || user?.admin?.phone || '');
+  const [roleTier, setRoleTier] = useState(user?.roleTier || user?.admin?.roleTier || 'TNP_ADMIN');
+  const [department, setDepartment] = useState(user?.department || user?.admin?.department || 'Training & Placement Cell');
+  const [designation, setDesignation] = useState(user?.designation || user?.admin?.designation || 'Head of T&P / Governance');
+  const [collegeName, setCollegeName] = useState(user?.collegeName || user?.admin?.collegeName || 'G.H. Raisoni College of Engineering (Autonomous)');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchAdminProfile = async () => {
+      if (!user?.uid) return;
+      setLoading(true);
+      try {
+        const docSnap = await getDoc(doc(db, 'admins', user.uid));
+        if (docSnap.exists()) {
+          const a = docSnap.data();
+          if (a.name) setName(a.name);
+          if (a.email) setEmail(a.email);
+          if (a.phone) setPhone(a.phone);
+          if (a.roleTier) setRoleTier(a.roleTier);
+          if (a.department) setDepartment(a.department);
+          if (a.designation) setDesignation(a.designation);
+          if (a.collegeName) setCollegeName(a.collegeName);
+        }
+      } catch (err) {
+        console.warn('Admin profile fetch notice:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminProfile();
+  }, [user?.uid]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Administrator profile updated successfully!');
+    if (!user?.uid) {
+      toast.error('User session not found.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        uid: user.uid,
+        userId: user.uid,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        roleTier,
+        department: department.trim(),
+        designation: designation.trim(),
+        collegeName: collegeName.trim(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, 'admins', user.uid), payload, { merge: true });
+      await setDoc(doc(db, 'users', user.uid), {
+        name: name.trim(),
+        phone: phone.trim(),
+        department: department.trim(),
+        designation: designation.trim(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      await refreshUser().catch(() => {});
+      toast.success('Administrator profile updated successfully!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update administrator profile.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
         title="Administrator Profile"
-        subtitle="Institutional governance credentials and security authorization level"
+        subtitle="Institutional governance credentials and security authorization clearance"
         onOpenMobileNav={onOpenMobileNav}
       />
 
@@ -39,11 +109,11 @@ export default function AdminProfilePage() {
               <div>
                 <h1 className="text-xl font-bold text-slate-900">{name}</h1>
                 <div className="text-xs text-slate-500 font-mono mt-0.5">
-                  Institutional Master Governance · Full System Authority
+                  {department} · {collegeName}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="info" size="sm">Master Root Key Authorized</Badge>
-                  <span className="text-xs font-mono font-bold text-slate-700">Audit Level 4</span>
+                  <Badge variant="info" size="sm">Clearance Tier: {roleTier}</Badge>
+                  <span className="text-xs font-mono font-bold text-slate-700">Governance Clearance</span>
                 </div>
               </div>
             </div>
@@ -52,7 +122,7 @@ export default function AdminProfilePage() {
           <form onSubmit={handleSave} className="space-y-4 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Administrator Account Name"
+                label="Administrator Full Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 leftIcon={<Shield size={15} />}
@@ -60,32 +130,55 @@ export default function AdminProfilePage() {
               />
 
               <Input
-                label="Institutional Governance Email"
+                label="Official Governance Email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                disabled
                 leftIcon={<Mail size={15} />}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Official Contact Number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                leftIcon={<Phone size={15} />}
+                placeholder="e.g. +91 80 2299 0001"
+              />
+
+              <Input
+                label="Department / Unit"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                leftIcon={<Building size={15} />}
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Emergency Hotline Contact"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                leftIcon={<Phone size={15} />}
+                label="Administrative Designation"
+                value={designation}
+                onChange={(e) => setDesignation(e.target.value)}
+                required
               />
 
               <Input
-                label="Master Signing Key Hash"
-                defaultValue="ed25519:9f8a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a"
-                disabled
-                leftIcon={<Key size={15} />}
+                label="Governance Institution"
+                value={collegeName}
+                onChange={(e) => setCollegeName(e.target.value)}
               />
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex justify-end">
-              <Button type="submit" variant="primary" size="md" className="bg-sky-600 hover:bg-sky-700" leftIcon={<Save size={14} />}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                className="bg-sky-600 hover:bg-sky-700"
+                loading={saving}
+                leftIcon={<Save size={14} />}
+              >
                 Save Profile
               </Button>
             </div>

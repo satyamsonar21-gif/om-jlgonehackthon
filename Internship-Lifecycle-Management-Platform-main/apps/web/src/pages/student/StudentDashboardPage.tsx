@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { PriorityBanner } from '@/components/common/PriorityBanner';
@@ -36,12 +36,19 @@ import { api } from '@/lib/api';
 import { db } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
+const STATIC_TASKS = [
+  { id: 't1', title: 'Implement OAuth2 PKCE challenge validation in Go backend', done: true, due: 'Done today' },
+  { id: 't2', title: 'Author Jest unit tests for token expiration refresh flow', done: true, due: 'Done yesterday' },
+  { id: 't3', title: 'Benchmark PostgreSQL query throughput with 50k concurrent sessions', done: false, due: 'Due Friday' },
+  { id: 't4', title: 'Author Week 5 Synthesis Report and link merged pull requests', done: false, due: 'Due Tomorrow' },
+];
+
 export default function StudentDashboardPage() {
   const { onOpenMobileNav } = useOutletContext<{ onOpenMobileNav?: () => void }>() || {};
   const { user } = useAuth();
 
   const [studentProfile, setStudentProfile] = useState<any>(user?.student || null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(!user?.student);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileNotFound, setProfileNotFound] = useState(false);
 
@@ -52,12 +59,14 @@ export default function StudentDashboardPage() {
   const [logHours, setLogHours] = useState('8');
 
   // Load real student profile from Firestore: students/{user.uid}
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async (showLoadingSpinner: boolean = false) => {
     if (!user?.uid) {
       setLoadingProfile(false);
       return;
     }
-    setLoadingProfile(true);
+    if (showLoadingSpinner) {
+      setLoadingProfile(true);
+    }
     setProfileError(null);
     try {
       const studentDocSnap = await getDoc(doc(db, 'students', user.uid));
@@ -67,7 +76,6 @@ export default function StudentDashboardPage() {
         setProfileNotFound(false);
       } else {
         setProfileNotFound(true);
-        // Fallback to auth user state if available
         if (user?.student) {
           setStudentProfile(user.student);
         }
@@ -81,13 +89,14 @@ export default function StudentDashboardPage() {
     } finally {
       setLoadingProfile(false);
     }
-  };
+  }, [user?.uid, user?.student]);
 
   useEffect(() => {
-    loadProfile();
-  }, [user?.uid]);
+    // If we don't have user.student cached, fetch with loading spinner; otherwise refresh in background
+    loadProfile(!user?.student);
+  }, [loadProfile, user?.student]);
 
-  const handleLogSubmit = async (e: React.FormEvent) => {
+  const handleLogSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const internshipId = user?.student?.internships?.[0]?.id || 'demo_internship_1';
@@ -104,56 +113,83 @@ export default function StudentDashboardPage() {
       setIsLogModalOpen(false);
       setLogSummary('');
     }
-  };
+  }, [user?.student?.internships, logSummary, logHours]);
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     toast.success(`Message dispatched to ${contactTarget?.name}`);
     setIsContactModalOpen(false);
-  };
+  }, [contactTarget?.name]);
 
-  const tasks = [
-    { id: 't1', title: 'Implement OAuth2 PKCE challenge validation in Go backend', done: true, due: 'Done today' },
-    { id: 't2', title: 'Author Jest unit tests for token expiration refresh flow', done: true, due: 'Done yesterday' },
-    { id: 't3', title: 'Benchmark PostgreSQL query throughput with 50k concurrent sessions', done: false, due: 'Due Friday' },
-    { id: 't4', title: 'Author Week 5 Synthesis Report and link merged pull requests', done: false, due: 'Due Tomorrow' },
-  ];
+  const tasks = STATIC_TASKS;
 
-  const studentName = studentProfile?.name || user?.name || user?.displayName || 'Student';
-  const studentEmail = studentProfile?.email || user?.email || '';
-  const rollNumber = studentProfile?.rollNumber || studentProfile?.studentId || '';
-  const branch = studentProfile?.branch || studentProfile?.department || 'Computer Science & Engineering';
-  const yearNum = studentProfile?.year ? `${studentProfile.year} Year` : '3rd Year';
-  const cgpa = studentProfile?.cgpa !== undefined ? Number(studentProfile.cgpa) : undefined;
-  const backlogs = studentProfile?.backlogs !== undefined ? Number(studentProfile.backlogs) : 0;
-  const passingYear = studentProfile?.passingYear || 2026;
-  const isProfileCompleted = studentProfile?.profileCompleted ?? true;
-  const isVerified = studentProfile?.verified ?? false;
-  const certificationsCount = Array.isArray(studentProfile?.certifications) ? studentProfile.certifications.length : 0;
-  const experienceCount = Array.isArray(studentProfile?.experience) ? studentProfile.experience.length : 0;
+  const dossier = useMemo(() => {
+    const studentName = studentProfile?.name || user?.name || user?.displayName || 'Student';
+    const studentEmail = studentProfile?.email || user?.email || '';
+    const rollNumber = studentProfile?.rollNumber || studentProfile?.studentId || '';
+    const branch = studentProfile?.branch || studentProfile?.department || 'Computer Science & Engineering';
+    const yearNum = studentProfile?.year ? `${studentProfile.year} Year` : '3rd Year';
+    const cgpa = studentProfile?.cgpa !== undefined ? Number(studentProfile.cgpa) : undefined;
+    const backlogs = studentProfile?.backlogs !== undefined ? Number(studentProfile.backlogs) : 0;
+    const passingYear = studentProfile?.passingYear || 2026;
+    const isProfileCompleted = studentProfile?.profileCompleted ?? true;
+    const isVerified = studentProfile?.verified ?? false;
+    const certificationsCount = Array.isArray(studentProfile?.certifications) ? studentProfile.certifications.length : 0;
+    const experienceCount = Array.isArray(studentProfile?.experience) ? studentProfile.experience.length : 0;
+    const resumeUrl = studentProfile?.resumeUrl || studentProfile?.resume || '';
 
-  const skillsList: string[] = Array.isArray(studentProfile?.skills)
-    ? studentProfile.skills
-    : (typeof studentProfile?.skills === 'string' && studentProfile.skills
-        ? studentProfile.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
-        : []);
-  const resumeUrl = studentProfile?.resumeUrl || studentProfile?.resume || '';
+    let skillsList: string[] = [];
+    if (Array.isArray(studentProfile?.skills)) {
+      skillsList = studentProfile.skills;
+    } else if (typeof studentProfile?.skills === 'string' && studentProfile.skills) {
+      skillsList = studentProfile.skills.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+
+    return {
+      studentName,
+      studentEmail,
+      rollNumber,
+      branch,
+      yearNum,
+      cgpa,
+      backlogs,
+      passingYear,
+      isProfileCompleted,
+      isVerified,
+      certificationsCount,
+      experienceCount,
+      resumeUrl,
+      skillsList,
+    };
+  }, [studentProfile, user]);
 
   return (
     <div className="min-h-full pb-16 bg-[#F8FAFC]">
       <Header
-        title={`${studentName}'s Dashboard`}
-        subtitle={`${rollNumber ? `PRN: ${rollNumber} · ` : ''}${branch} · ${cgpa !== undefined ? `${cgpa.toFixed(2)} CGPA · ` : ''}Class of ${passingYear}`}
+        title={`${dossier.studentName}'s Dashboard`}
+        subtitle={`${dossier.rollNumber ? `PRN: ${dossier.rollNumber} · ` : ''}${dossier.branch} · ${dossier.cgpa !== undefined ? `${dossier.cgpa.toFixed(2)} CGPA · ` : ''}Class of ${dossier.passingYear}`}
         onOpenMobileNav={onOpenMobileNav}
       />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
         {/* Academic Profile & Dossier Snapshot (Real Firestore Data: students/{uid}) */}
         {loadingProfile ? (
-          <Card className="p-6 bg-white border border-slate-200">
-            <div className="flex items-center justify-center py-6 gap-3 text-slate-500 text-xs">
-              <RefreshCw size={18} className="animate-spin text-amber-600" />
-              <span>Loading student profile dossier from Firestore...</span>
+          <Card className="p-5 sm:p-6 bg-white border border-slate-200 animate-pulse">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-slate-200" />
+                <div className="space-y-2">
+                  <div className="h-4 w-36 bg-slate-200 rounded" />
+                  <div className="h-3 w-52 bg-slate-100 rounded" />
+                </div>
+              </div>
+              <div className="h-8 w-32 bg-slate-100 rounded-lg" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-4">
+              <div className="h-14 bg-slate-100 rounded-xl" />
+              <div className="h-14 bg-slate-100 rounded-xl" />
+              <div className="h-14 bg-slate-100 rounded-xl" />
+              <div className="h-14 bg-slate-100 rounded-xl" />
             </div>
           </Card>
         ) : profileError ? (
@@ -163,7 +199,7 @@ export default function StudentDashboardPage() {
                 <AlertCircle size={18} className="text-red-600 shrink-0" />
                 <span>Unable to load student profile: {profileError}</span>
               </div>
-              <Button variant="outline" size="sm" onClick={loadProfile} leftIcon={<RefreshCw size={12} />}>
+              <Button variant="outline" size="sm" onClick={() => loadProfile(true)} leftIcon={<RefreshCw size={12} />}>
                 Retry
               </Button>
             </div>
@@ -191,20 +227,20 @@ export default function StudentDashboardPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-sm">{studentName}</h3>
-                    {isVerified ? (
+                    <h3 className="font-bold text-slate-900 text-sm">{dossier.studentName}</h3>
+                    {dossier.isVerified ? (
                       <Badge variant="success" size="sm">Verified Student</Badge>
                     ) : (
                       <Badge variant="warning" size="sm">Pending Verification</Badge>
                     )}
-                    {isProfileCompleted ? (
+                    {dossier.isProfileCompleted ? (
                       <Badge variant="info" size="sm">Profile Completed</Badge>
                     ) : (
                       <Badge variant="neutral" size="sm">Profile Incomplete</Badge>
                     )}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {studentEmail} · {branch} · {yearNum}
+                    {dossier.studentEmail} · {dossier.branch} · {dossier.yearNum}
                   </p>
                 </div>
               </div>
@@ -218,23 +254,23 @@ export default function StudentDashboardPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-4 text-xs">
               <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                 <span className="text-[11px] text-slate-400 font-medium block">PRN / Roll Number</span>
-                <span className="font-bold text-slate-900 font-mono text-xs">{rollNumber || 'Not Set'}</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{dossier.rollNumber || 'Not Set'}</span>
               </div>
               <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                 <span className="text-[11px] text-slate-400 font-medium block">Cumulative CGPA</span>
                 <span className="font-bold text-emerald-600 font-mono text-xs">
-                  {cgpa !== undefined ? `${cgpa.toFixed(2)} / 10.0` : 'Not Available'}
+                  {dossier.cgpa !== undefined ? `${dossier.cgpa.toFixed(2)} / 10.0` : 'Not Available'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                 <span className="text-[11px] text-slate-400 font-medium block">Active Backlogs</span>
-                <span className={`font-bold font-mono text-xs ${backlogs > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                  {backlogs} Backlog{backlogs === 1 ? '' : 's'}
+                <span className={`font-bold font-mono text-xs ${dossier.backlogs > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                  {dossier.backlogs} Backlog{dossier.backlogs === 1 ? '' : 's'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                 <span className="text-[11px] text-slate-400 font-medium block">Passing Year</span>
-                <span className="font-bold text-slate-900 font-mono text-xs">{passingYear}</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{dossier.passingYear}</span>
               </div>
             </div>
 
@@ -246,7 +282,7 @@ export default function StudentDashboardPage() {
                   Certifications:
                 </span>
                 <span className="font-semibold text-slate-800 text-[11px]">
-                  {certificationsCount} Credential{certificationsCount === 1 ? '' : 's'}
+                  {dossier.certificationsCount} Credential{dossier.certificationsCount === 1 ? '' : 's'}
                 </span>
               </div>
               <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
@@ -255,18 +291,18 @@ export default function StudentDashboardPage() {
                   Experience:
                 </span>
                 <span className="font-semibold text-slate-800 text-[11px]">
-                  {experienceCount} Record{experienceCount === 1 ? '' : 's'}
+                  {dossier.experienceCount} Record{dossier.experienceCount === 1 ? '' : 's'}
                 </span>
               </div>
             </div>
 
-            {skillsList.length > 0 && (
+            {dossier.skillsList.length > 0 && (
               <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="text-[11px] font-semibold text-slate-500 mr-1 flex items-center gap-1">
                   <Code2 size={13} className="text-amber-600" />
                   Skills:
                 </span>
-                {skillsList.map((skill, idx) => (
+                {dossier.skillsList.map((skill, idx) => (
                   <span
                     key={idx}
                     className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-medium text-[11px] border border-slate-200/60"
@@ -274,9 +310,9 @@ export default function StudentDashboardPage() {
                     {skill}
                   </span>
                 ))}
-                {resumeUrl && (
+                {dossier.resumeUrl && (
                   <a
-                    href={resumeUrl}
+                    href={dossier.resumeUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline"

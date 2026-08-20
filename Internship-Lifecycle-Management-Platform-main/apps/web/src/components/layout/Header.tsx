@@ -24,7 +24,7 @@ const roleMap: Record<string, Role> = {
   admin: 'ADMIN',
 };
 
-export function Header({ title, subtitle, onOpenMobileNav }: HeaderProps) {
+export const Header = React.memo(function Header({ title, subtitle, onOpenMobileNav }: HeaderProps) {
   const location = useLocation();
   const roleKey = getRoleFromPath(location.pathname);
   const role = roleMap[roleKey] || 'STUDENT';
@@ -140,6 +140,6 @@ export function Header({ title, subtitle, onOpenMobileNav }: HeaderProps) {
       <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );
-}
+});
 
 export default Header;

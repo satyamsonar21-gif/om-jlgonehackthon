@@ -41,7 +41,7 @@ type AccountType = 'STUDENT' | 'FACULTY' | 'COMPANY' | 'ADMIN';
 export default function SignUpPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { registerStudent, registerFaculty, registerCompany } = useAuth();
+  const { registerStudent, registerFaculty, registerCompany, registerAdmin } = useAuth();
 
   const [selectedType, setSelectedType] = useState<AccountType | null>(
     (searchParams.get('type')?.toUpperCase() as AccountType) || null
@@ -366,83 +366,23 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
-      const payload = {
-        name: adminData.name.trim(),
+      const res = await registerAdmin({
+        ...adminData,
         fullName: adminData.name.trim(),
+        name: adminData.name.trim(),
         email: adminData.email.trim().toLowerCase(),
-        phone: adminData.phone.trim() || undefined,
-        role: adminData.role,
-        department: adminData.department.trim(),
-        designation: adminData.designation.trim(),
-        collegeName: adminData.collegeName,
-        password: adminData.password,
-        confirmPassword: adminData.confirmPassword,
-      };
-
-      // 1. Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        payload.email,
-        payload.password
-      );
-      const firebaseUid = userCredential.user.uid;
-      await updateProfile(userCredential.user, {
-        displayName: payload.name,
-      }).catch(() => {});
-
-      // 2. Firestore Document: users/{uid}
-      const userDocRef = doc(db, 'users', firebaseUid);
-      await setDoc(
-        userDocRef,
-        {
-          uid: firebaseUid,
-          email: payload.email,
-          name: payload.name,
-          displayName: payload.name,
-          role: 'ADMIN',
-          roleTier: payload.role,
-          department: payload.department,
-          phone: payload.phone || '',
-          status: 'ACTIVE',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      // 3. Platform Database Registration (optional sync)
-      api.createAdmin({
-        ...payload,
-        firebaseUid,
-      }).catch(() => {});
+      });
 
       setCreatedAdminInfo({
-        name: payload.name,
-        email: payload.email,
-        firebaseUid,
+        name: adminData.name,
+        email: adminData.email,
+        firebaseUid: res.uid,
         role: 'ADMIN',
-        roleTier: payload.role,
+        roleTier: adminData.role,
       });
       setAdminStep(2); // Move to Success Screen
-      toast.success(`Administrator account provisioned for ${adminData.name}!`);
-    } catch (err: any) {
-      let msg = err.message || 'Failed to create administrator account. Please try again.';
-      if (err.code) {
-        switch (err.code) {
-          case 'auth/email-already-in-use':
-            msg = 'An account with this email already exists.';
-            break;
-          case 'auth/weak-password':
-            msg = 'Password must be at least 8 characters long and contain both letters and numbers.';
-            break;
-          case 'auth/invalid-email':
-            msg = 'Please enter a valid email address.';
-            break;
-          default:
-            msg = err.message || 'Administrator registration failed.';
-        }
-      }
-      toast.error(msg);
+    } catch {
+      // Error toast already displayed in AuthProvider registerAdmin()
     } finally {
       setLoading(false);
     }
